@@ -182,6 +182,15 @@ void main_thread_entry(void *parameter)
 #ifdef RT_USING_SMP
     rt_hw_secondary_cpu_up();
 #endif
+    /* set CPU to user-mode */
+    __asm__ __volatile__
+    (
+        "push {r2} \n\t"
+        "mrs r2, CONTROL \n\t"
+        "orr r2, r2, #0x03 \n\t"
+        "msr control, r2 \n\t"
+        "pop {r2} \n\t"
+    );
     /* invoke system main function */
 #if defined(__CC_ARM) || defined(__CLANG_ARM)
     {
