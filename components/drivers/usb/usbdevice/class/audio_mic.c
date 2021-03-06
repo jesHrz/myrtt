@@ -549,7 +549,7 @@ int audio_mic_init(void)
 
     mic_tid = rt_thread_create("mic_thread",
                                mic_entry, RT_NULL,
-                               1024,
+                               0, 1024,
                                5, 10);
 
     if (mic_tid != RT_NULL)

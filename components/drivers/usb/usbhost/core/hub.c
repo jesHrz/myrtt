@@ -708,7 +708,7 @@ void rt_usbh_hub_init(uhcd_t hcd)
     
     /* create usb hub thread */
     thread = rt_thread_create("usbh", rt_usbh_hub_thread_entry, RT_NULL, 
-        USB_THREAD_STACK_SIZE, 8, 20);
+        0, USB_THREAD_STACK_SIZE, 8, 20);
     if(thread != RT_NULL)
     {
         /* startup usb host thread */

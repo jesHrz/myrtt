@@ -550,7 +550,7 @@ int audio_speaker_init(void)
 
     speaker_tid = rt_thread_create("speaker_thread",
                                    speaker_entry, RT_NULL,
-                                   1024,
+                                   0, 1024,
                                    5, 10);
 
     if (speaker_tid != RT_NULL)

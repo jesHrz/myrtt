@@ -170,6 +170,10 @@ jffs2_start_garbage_collect_thread(struct jffs2_sb_info *c)
 	                   "jffs2_gc_thread",
                        jffs2_garbage_collect_thread,
                        (void *)c,
+                       /* user stack */
+                       RT_NULL,
+                       0,
+                       /* kernel stack */
                        (void*)sb->s_gc_thread_stack,
                        sizeof(sb->s_gc_thread_stack),
 					   CYGNUM_JFFS2_GC_THREAD_PRIORITY,

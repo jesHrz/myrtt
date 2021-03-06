@@ -1,5 +1,13 @@
+.cpu cortex-m7
+.syntax unified
+.thumb
+.text
+
+.global rt_thread_exit
+
 .global SVC_Handler
-.align 4
 .type SVC_Handler, % function
 SVC_Handler:
-    b .
+    push {lr}
+    bl rt_thread_exit
+    pop {pc}

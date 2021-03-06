@@ -145,7 +145,7 @@ static void sensor_fifo(int argc, char **argv)
 
     tid1 = rt_thread_create("sen_rx_thread",
                             sensor_fifo_rx_entry, sensor,
-                            1024,
+                            0, 1024,
                             15, 5);
 
     if (tid1 != RT_NULL)
@@ -204,7 +204,7 @@ static void sensor_int(int argc, char **argv)
 
     tid1 = rt_thread_create("sen_rx_thread",
                             sensor_irq_rx_entry, sensor,
-                            1024,
+                            0, 1024,
                             15, 5);
 
     if (tid1 != RT_NULL)

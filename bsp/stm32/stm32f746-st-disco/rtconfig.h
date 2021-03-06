@@ -15,7 +15,7 @@
 #define RT_USING_HOOK
 #define RT_USING_IDLE_HOOK
 #define RT_IDLE_HOOK_LIST_SIZE 4
-#define IDLE_THREAD_STACK_SIZE 256
+#define IDLE_THREAD_STACK_SIZE 1024
 #define RT_DEBUG
 #define RT_DEBUG_COLOR
 
@@ -49,11 +49,9 @@
 
 #define RT_USING_COMPONENTS_INIT
 #define RT_USING_USER_MAIN
-#define RT_MAIN_THREAD_STACK_SIZE 2048
+#define RT_MAIN_THREAD_KERNEL_STACK_SIZE 2048
+#define RT_MAIN_THREAD_USER_STACK_SIZE 4096
 #define RT_MAIN_THREAD_PRIORITY 10
-
-/* C++ features */
-
 
 /* Command shell */
 
@@ -90,23 +88,6 @@
 /* POSIX layer and C standard library */
 
 #define RT_LIBC_USING_TIME
-
-/* Network */
-
-/* Socket abstraction layer */
-
-
-/* Network interface device */
-
-
-/* light weight TCP/IP stack */
-
-
-/* AT commands */
-
-
-/* VBUS(Virtual Software BUS) */
-
 
 /* Utilities */
 

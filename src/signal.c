@@ -65,17 +65,25 @@ static void _signal_entry(void *parameter)
     }
 #else
     /* return to thread */
-    tid->sp = tid->sig_ret;
+    if (tid->lr & RT_THREAD_PSP)
+    {
+        tid->usp = tid->sig_ret;
+        LOG_D("switch back to: usp=0x%08x\n", tid->usp);
+    }
+    else
+    {
+        tid->ksp = tid->sig_ret;
+        LOG_D("switch back to: ksp=0x%08x\n", tid->ksp);
+    }
     tid->sig_ret = RT_NULL;
 #endif
 
-    LOG_D("switch back to: 0x%08x\n", tid->sp);
     tid->stat &= ~RT_THREAD_STAT_SIGNAL;
 
 #ifdef RT_USING_SMP
     rt_hw_context_switch_to((rt_base_t)&parameter, tid);
 #else
-    rt_hw_context_switch_to((rt_ubase_t)&(tid->sp));
+    rt_hw_context_switch_to((rt_ubase_t)RT_THREAD_STRUCT_OFFSET(tid));
 #endif /*RT_USING_SMP*/
 }
 
@@ -150,13 +158,22 @@ static void _signal_deliver(rt_thread_t tid)
 #else
             /* point to the signal handle entry */
             tid->stat &= ~RT_THREAD_STAT_SIGNAL_PENDING;
-            tid->sig_ret = tid->sp;
-            tid->sp = rt_hw_stack_init((void *)_signal_entry, RT_NULL,
-                                       (void *)((char *)tid->sig_ret - 32), RT_NULL);
+            if (tid->lr & RT_THREAD_PSP)
+            {
+                tid->sig_ret = tid->usp;
+                tid->usp = rt_hw_stack_init((void *)_signal_entry, RT_NULL,
+                                        (void *)((char *)tid->sig_ret - 32), RT_NULL);
+                LOG_D("signal stack pointer usp:0x%08x", tid->usp);
+            }
+            else
+            {
+                tid->sig_ret = tid->ksp;
+                tid->ksp = rt_hw_stack_init((void *)_signal_entry, RT_NULL,
+                                        (void *)((char *)tid->sig_ret - 32), RT_NULL);
+                LOG_D("signal stack pointer ksp:0x%08x", tid->ksp);
+            }
 #endif
-
             rt_hw_interrupt_enable(level);
-            LOG_D("signal stack pointer @ 0x%08x", tid->sp);
 
             /* re-schedule */
             rt_schedule();

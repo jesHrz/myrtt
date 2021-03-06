@@ -125,6 +125,10 @@ RTM_EXPORT(_rt_errno);
  */
 RT_WEAK void *rt_memset(void *s, int c, rt_ubase_t count)
 {
+    /* 如果起始地址是空 则直接返回 */
+    if (s == RT_NULL)
+        return RT_NULL;
+
 #ifdef RT_USING_TINY_SIZE
     char *xs = (char *)s;
 

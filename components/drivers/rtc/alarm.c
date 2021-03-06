@@ -794,7 +794,7 @@ int rt_alarm_system_init(void)
 
     tid = rt_thread_create("alarmsvc",
                            rt_alarmsvc_thread_init, RT_NULL,
-                           2048, 10, 5);
+                           0, 2048, 10, 5);
     if (tid != RT_NULL)
         rt_thread_startup(tid);
 

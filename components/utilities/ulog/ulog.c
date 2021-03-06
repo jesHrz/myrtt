@@ -1406,7 +1406,7 @@ int ulog_async_init(void)
     if (ulog.async_th == NULL)
     {
         /* async output thread */
-        ulog.async_th = rt_thread_create("ulog_async", async_output_thread_entry, &ulog, ULOG_ASYNC_OUTPUT_THREAD_STACK,
+        ulog.async_th = rt_thread_create("ulog_async", async_output_thread_entry, &ulog, 0, ULOG_ASYNC_OUTPUT_THREAD_STACK,
                 ULOG_ASYNC_OUTPUT_THREAD_PRIORITY, 20);
         if (ulog.async_th == NULL)
         {

@@ -737,7 +737,11 @@ int rt_mmcsd_core_init(void)
         RT_IPC_FLAG_FIFO);
     RT_ASSERT(ret == RT_EOK);
      ret = rt_thread_init(&mmcsd_detect_thread, "mmcsd_detect", mmcsd_detect, RT_NULL, 
-                 &mmcsd_stack[0], RT_MMCSD_STACK_SIZE, RT_MMCSD_THREAD_PREORITY, 20);
+                /* user stack */
+                 RT_NULL, 0,
+                /* kernel stack */
+                 &mmcsd_stack[0], RT_MMCSD_STACK_SIZE, 
+                 RT_MMCSD_THREAD_PREORITY, 20);
     if (ret == RT_EOK) 
     {
         rt_thread_startup(&mmcsd_detect_thread);

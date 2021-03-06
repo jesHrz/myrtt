@@ -41,6 +41,7 @@
 
 /* include rtconfig header to import configuration */
 #include <rtconfig.h>
+#include <exc_return.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -543,6 +544,7 @@ typedef siginfo_t rt_siginfo_t;
 #define RT_SCHEDULE_IPI                 0
 #endif
 
+
 /**
  * CPUs definitions
  *
@@ -568,6 +570,8 @@ struct rt_cpu
 
 #endif
 
+#define RT_THREAD_STRUCT_OFFSET(obj) &((obj)->usp)
+
 /**
  * Thread structure
  */
@@ -578,24 +582,36 @@ struct rt_thread
     rt_uint8_t  type;                                   /**< type of object */
     rt_uint8_t  flags;                                  /**< thread's flags */
 
-#ifdef RT_USING_MODULE
-    void       *module_id;                              /**< id of application module */
-#endif
-
     rt_list_t   list;                                   /**< the object list */
+
+    void       *usp;                                    /**< user stack point */
+    void       *ksp;                                    /**< kernel stack point */
+    void       *user_stack_addr;                        /**< user stack address */
+    void       *kernel_stack_addr;                      /**< kernel stack address */
+    rt_uint32_t lr;                                     /**< 00 - Handler-mode & MSP
+                                                             01 - Handler-mode & PSP
+                                                             10 - Thread-mode  & MSP
+                                                             11 - Thread-mode  & PSP */
+    // rt_uint32_t privilege;                              /**< 0 unprivileged 1 privileged */
+    // rt_uint32_t mode;                                   /**< 0 handler-mode 1 thread-mode */
+
     rt_list_t   tlist;                                  /**< the thread list */
 
     /* stack point and entry */
-    void       *sp;                                     /**< stack point */
     void       *entry;                                  /**< entry */
     void       *parameter;                              /**< parameter */
-    void       *stack_addr;                             /**< stack address */
-    rt_uint32_t stack_size;                             /**< stack size */
+
+    rt_uint32_t user_stack_size;                        /**< user stack size */
+    rt_uint32_t kernel_stack_size;                      /**< kernel stack size */
 
     /* error code */
     rt_err_t    error;                                  /**< error code */
 
     rt_uint8_t  stat;                                   /**< thread status */
+
+#ifdef RT_USING_MODULE
+    void       *module_id;                              /**< id of application module */
+#endif
 
 #ifdef RT_USING_SMP
     rt_uint8_t  bind_cpu;                               /**< thread is bind to cpu */

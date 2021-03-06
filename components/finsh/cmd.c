@@ -176,11 +176,11 @@ long list_thread(void)
     maxlen = RT_NAME_MAX;
 
 #ifdef RT_USING_SMP
-    rt_kprintf("%-*.s cpu pri  status      sp     stack size max used left tick  error\n", maxlen, item_title); object_split(maxlen);
+    rt_kprintf("%-*.s cpu pri  status      sp     user_stack size kernel_stack size max used left tick  error\n", maxlen, item_title); object_split(maxlen);
     rt_kprintf(     " --- ---  ------- ---------- ----------  ------  ---------- ---\n");
 #else
-    rt_kprintf("%-*.s pri  status      sp     stack size max used left tick  error\n", maxlen, item_title); object_split(maxlen);
-    rt_kprintf(     " ---  ------- ---------- ----------  ------  ---------- ---\n");
+    rt_kprintf("%-*.s pri  status      sp     user_stack  size    kernel_stack size   max used  left   tick  error\n", maxlen, item_title); object_split(maxlen);
+    rt_kprintf(     " ---  ------- ---------- ----------  ------  ------------ ------ --------  -----  \n");
 #endif /*RT_USING_SMP*/
 
     do
@@ -225,28 +225,57 @@ long list_thread(void)
                     else if (stat == RT_THREAD_INIT)    rt_kprintf(" init   ");
                     else if (stat == RT_THREAD_CLOSE)   rt_kprintf(" close  ");
                     else if (stat == RT_THREAD_RUNNING) rt_kprintf(" running");
-
+/* USER STACK */
 #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
-                    ptr = (rt_uint8_t *)thread->stack_addr + thread->stack_size - 1;
+
+                    if (thread->user_stack_size == 0)
+                    {
+                        rt_kprintf(" NULL 0x%08x    NaN   ", 0);
+                    }
+                    else
+                    {
+                        ptr = (rt_uint8_t *)thread->user_stack_addr + thread->user_stack_size - 1;
+                        while (*ptr == '#')ptr --;
+                        rt_kprintf(" 0x%08x 0x%08x    %02d%%   ",
+                            (rt_ubase_t)thread->usp - (rt_ubase_t)thread->user_stack_addr),
+                            thread->user_stack_size,
+                            ((rt_ubase_t)ptr - (rt_ubase_t)thread->user_stack_addr) * 100 / thread->user_stack_size);
+                    }
+
+                    ptr = (rt_uint8_t *)thread->kernel_stack_addr + thread->kernel_stack_size - 1;
                     while (*ptr == '#')ptr --;
+                    rt_kprintf(" 0x%08x 0x%08x    %02d%%   ",
+                            (rt_ubase_t)thread->ksp - (rt_ubase_t)thread->kernel_stack_addr),
+                            thread->kernel_stack_size,
+                            ((rt_ubase_t)ptr - (rt_ubase_t)thread->kernel_stack_addr) * 100 / thread->kernel_stack_size);
 
-                    rt_kprintf(" 0x%08x 0x%08x    %02d%%   0x%08x %03d\n",
-                            ((rt_ubase_t)thread->sp - (rt_ubase_t)thread->stack_addr),
-                            thread->stack_size,
-                            ((rt_ubase_t)ptr - (rt_ubase_t)thread->stack_addr) * 100 / thread->stack_size,
-                            thread->remaining_tick,
-                            thread->error);
+                    rt_kprintf(" 0x%08x %03d\n", thread->remaining_tick, thread->error);
 #else
-                    ptr = (rt_uint8_t *)thread->stack_addr;
-                    while (*ptr == '#')ptr ++;
 
-                    rt_kprintf(" 0x%08x 0x%08x    %02d%%   0x%08x %03d\n",
-                            thread->stack_size + ((rt_ubase_t)thread->stack_addr - (rt_ubase_t)thread->sp),
-                            thread->stack_size,
-                            (thread->stack_size - ((rt_ubase_t) ptr - (rt_ubase_t) thread->stack_addr)) * 100
-                            / thread->stack_size,
-                            thread->remaining_tick,
-                            thread->error);
+                    if (thread->user_stack_size == 0)
+                    {
+                        rt_kprintf(" NULL\t0x%08x\tNaN\t", 0);
+                    }
+                    else
+                    {
+                        ptr = (rt_uint8_t *)thread->user_stack_addr;
+                        while (*ptr == '#')ptr ++;
+                        rt_kprintf(" 0x%08x\t0x%08x\t%02d%%\t",
+                            thread->user_stack_size + ((rt_ubase_t)thread->user_stack_addr - (rt_ubase_t)thread->usp),
+                            thread->user_stack_size,
+                            (thread->user_stack_size - ((rt_ubase_t) ptr - (rt_ubase_t) thread->user_stack_addr)) * 100
+                            / thread->user_stack_size);
+                    }
+
+                    ptr = (rt_uint8_t *)thread->kernel_stack_addr;
+                    while (*ptr == '#')ptr ++;
+                    rt_kprintf(" 0x%08x\t0x%08x\t%02d%%\t",
+                        thread->kernel_stack_size + ((rt_ubase_t)thread->kernel_stack_addr - (rt_ubase_t)thread->ksp),
+                        thread->kernel_stack_size,
+                        (thread->kernel_stack_size - ((rt_ubase_t) ptr - (rt_ubase_t) thread->kernel_stack_addr)) * 100
+                        / thread->kernel_stack_size);
+
+                    rt_kprintf(" 0x%08x %03d\n", thread->remaining_tick, thread->error);
 #endif
                 }
             }

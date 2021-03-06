@@ -175,7 +175,8 @@ void rt_thread_idle_excute(void)
         /* remove defunct thread */
         rt_list_remove(&(thread->tlist));
         /* release thread's stack */
-        RT_KERNEL_FREE(thread->stack_addr);
+        RT_KERNEL_FREE(thread->user_stack_addr);
+        RT_KERNEL_FREE(thread->kernel_stack_addr);
         /* delete thread object */
         rt_object_delete((rt_object_t)thread);
         rt_hw_interrupt_enable(lock);
@@ -236,6 +237,10 @@ void rt_thread_idle_init(void)
                 tidle_name,
                 rt_thread_idle_entry,
                 RT_NULL,
+                /* user stack */
+                RT_NULL,
+                0,
+                /* kernel stack */
                 &rt_thread_stack[i][0],
                 sizeof(rt_thread_stack[i]),
                 RT_THREAD_PRIORITY_MAX - 1,

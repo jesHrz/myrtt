@@ -753,6 +753,10 @@ void rt_system_timer_thread_init(void)
                    "timer",
                    rt_thread_timer_entry,
                    RT_NULL,
+                   /* user stack */
+                   RT_NULL,
+                   0,
+                   /* kernel stack */
                    &timer_thread_stack[0],
                    sizeof(timer_thread_stack),
                    RT_TIMER_THREAD_PRIO,

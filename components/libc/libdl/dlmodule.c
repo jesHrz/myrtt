@@ -230,7 +230,8 @@ void dlmodule_destroy_subthread(struct rt_dlmodule *module, rt_thread_t thread)
     else
     {
         /* release thread's stack */
-        RT_KERNEL_FREE(thread->stack_addr);
+        RT_KERNEL_FREE(thread->user_stack_addr);
+        RT_KERNEL_FREE(thread->kernel_stack_addr);
         /* delete thread object */
         rt_object_delete((rt_object_t)thread);
     }
@@ -548,7 +549,7 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
             tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
-                module->stack_size, module->priority, 10);
+                0, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
@@ -725,7 +726,7 @@ struct rt_dlmodule* dlmodule_exec_custom(const char* pgname, const char* cmd, in
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
             tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
-                module->stack_size, module->priority, 10);
+                0, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;

@@ -2228,6 +2228,9 @@ rt_err_t rt_usbd_core_init(void)
     rt_thread_init(&usb_thread,
                    "usbd",
                    rt_usbd_thread_entry, RT_NULL,
+                   /* user stack */
+                   RT_NULL, 0,
+                   /* kernel stack */
                    usb_thread_stack, RT_USBD_THREAD_STACK_SZ,
                    RT_USBD_THREAD_PRIO, 20);
     /* rt_thread_init should always be OK, so start the thread without further

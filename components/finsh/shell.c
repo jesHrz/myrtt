@@ -873,13 +873,16 @@ int finsh_system_init(void)
     }
     tid = rt_thread_create(FINSH_THREAD_NAME,
                            finsh_thread_entry, RT_NULL,
-                           FINSH_THREAD_STACK_SIZE, FINSH_THREAD_PRIORITY, 10);
+                           0, FINSH_THREAD_STACK_SIZE, FINSH_THREAD_PRIORITY, 10);
 #else
     shell = &_shell;
     tid = &finsh_thread;
     result = rt_thread_init(&finsh_thread,
                             FINSH_THREAD_NAME,
                             finsh_thread_entry, RT_NULL,
+                            /* user stack */
+                            RT_NULL, 0, 
+                            /* kernel stack */
                             &finsh_thread_stack[0], sizeof(finsh_thread_stack),
                             FINSH_THREAD_PRIORITY, 10);
 #endif /* RT_USING_HEAP */

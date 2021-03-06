@@ -165,7 +165,8 @@ int entry(void)
 #ifndef RT_USING_HEAP
 /* if there is not enable heap, we should use static thread and stack. */
 ALIGN(8)
-static rt_uint8_t main_stack[RT_MAIN_THREAD_STACK_SIZE];
+static rt_uint8_t main_user_stack[RT_MAIN_THREAD_USER_STACK_SIZE];
+static rt_uint8_t main_kernel_stack[RT_MAIN_THREAD_KERNEL_STACK_SIZE];
 struct rt_thread main_thread;
 #endif
 
@@ -182,15 +183,6 @@ void main_thread_entry(void *parameter)
 #ifdef RT_USING_SMP
     rt_hw_secondary_cpu_up();
 #endif
-    /* set CPU to user-mode */
-    __asm__ __volatile__
-    (
-        "push {r2} \n\t"
-        "mrs r2, CONTROL \n\t"
-        "orr r2, r2, #0x03 \n\t"
-        "msr control, r2 \n\t"
-        "pop {r2} \n\t"
-    );
     /* invoke system main function */
 #if defined(__CC_ARM) || defined(__CLANG_ARM)
     {
@@ -204,25 +196,31 @@ void main_thread_entry(void *parameter)
 
 void rt_application_init(void)
 {
-    rt_thread_t tid;
+    rt_thread_t tid1, tid2;
 
 #ifdef RT_USING_HEAP
-    tid = rt_thread_create("main", main_thread_entry, RT_NULL,
-                           RT_MAIN_THREAD_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
-    RT_ASSERT(tid != RT_NULL);
+    tid1 = rt_thread_create("umain", main_thread_entry, RT_NULL,
+                           RT_MAIN_THREAD_USER_STACK_SIZE, RT_MAIN_THREAD_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
+    RT_ASSERT(tid1 != RT_NULL);
+    tid2 = rt_thread_create("kmain", main_thread_entry, RT_NULL,
+                           0, RT_MAIN_THREAD_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
+    RT_ASSERT(tid2 != RT_NULL);
 #else
     rt_err_t result;
 
     tid = &main_thread;
     result = rt_thread_init(tid, "main", main_thread_entry, RT_NULL,
-                            main_stack, sizeof(main_stack), RT_MAIN_THREAD_PRIORITY, 20);
+                            main_user_stack, sizeof(main_user_stack), 
+                            main_kernel_stack, sizeof(main_kernel_stack), 
+                            RT_MAIN_THREAD_PRIORITY, 20);
     RT_ASSERT(result == RT_EOK);
 
     /* if not define RT_USING_HEAP, using to eliminate the warning */
     (void)result;
 #endif
 
-    rt_thread_startup(tid);
+    rt_thread_startup(tid2);
+    rt_thread_startup(tid1);
 }
 
 int rtthread_startup(void)

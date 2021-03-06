@@ -660,7 +660,11 @@ static void rt_usb_hid_init(struct ufunction *func)
                             sizeof(hid_mq_pool), RT_IPC_FLAG_FIFO);
                             
     rt_thread_init(&hid_thread, "hidd", hid_thread_entry, hiddev,
-            hid_thread_stack, sizeof(hid_thread_stack), RT_USBD_THREAD_PRIO, 20);
+            /* user stack */
+            RT_NULL, 0,
+            /* kernel stack */
+            hid_thread_stack, sizeof(hid_thread_stack), 
+            RT_USBD_THREAD_PRIO, 20);
     rt_thread_startup(&hid_thread);
 }
 

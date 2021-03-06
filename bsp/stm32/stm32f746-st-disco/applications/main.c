@@ -17,10 +17,5 @@
 
 int main(void)
 {
-    __asm__ __volatile__
-    (
-        "svc #11"
-    );
-
     return RT_EOK;
 }

@@ -949,6 +949,9 @@ static void rt_usb_vcom_init(struct ufunction *func)
     /* init usb device thread */
     rt_thread_init(&vcom_thread, "vcom",
                    vcom_tx_thread_entry, func,
+                   /* user stack */
+                   RT_NULL, 0, 
+                   /* kernel stack */
                    vcom_thread_stack, VCOM_TASK_STK_SIZE,
                    16, 20);
     result = rt_thread_startup(&vcom_thread);

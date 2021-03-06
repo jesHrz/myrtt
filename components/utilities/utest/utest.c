@@ -254,7 +254,7 @@ static void utest_testcase_run(int argc, char** argv)
             }
             tid = rt_thread_create("utest",
                                     (void (*)(void *))utest_run, thr_param,
-                                    UTEST_THREAD_STACK_SIZE, UTEST_THREAD_PRIORITY, 10);
+                                    0, UTEST_THREAD_STACK_SIZE, UTEST_THREAD_PRIORITY, 10);
             if (tid != NULL)
             {
                 rt_thread_startup(tid);

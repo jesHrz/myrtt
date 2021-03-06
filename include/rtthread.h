@@ -122,15 +122,18 @@ rt_err_t rt_thread_init(struct rt_thread *thread,
                         const char       *name,
                         void (*entry)(void *parameter),
                         void             *parameter,
-                        void             *stack_start,
-                        rt_uint32_t       stack_size,
+                        void             *user_stack_start,
+                        rt_uint32_t       user_stack_size,
+                        void             *kernel_stack_start,
+                        rt_uint32_t       kernel_stack_size,
                         rt_uint8_t        priority,
                         rt_uint32_t       tick);
 rt_err_t rt_thread_detach(rt_thread_t thread);
 rt_thread_t rt_thread_create(const char *name,
                              void (*entry)(void *parameter),
                              void       *parameter,
-                             rt_uint32_t stack_size,
+                             rt_uint32_t user_stack_size,
+                             rt_uint32_t kernel_stack_size,
                              rt_uint8_t  priority,
                              rt_uint32_t tick);
 rt_thread_t rt_thread_self(void);
