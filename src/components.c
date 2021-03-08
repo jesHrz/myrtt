@@ -173,8 +173,6 @@ struct rt_thread main_thread;
 /* the system main thread */
 void main_thread_entry(void *parameter)
 {
-    extern int main(void);
-
 #ifdef RT_USING_COMPONENTS_INIT
     /* RT-Thread components initialization */
     rt_components_init();
@@ -183,28 +181,16 @@ void main_thread_entry(void *parameter)
 #ifdef RT_USING_SMP
     rt_hw_secondary_cpu_up();
 #endif
-    /* invoke system main function */
-#if defined(__CC_ARM) || defined(__CLANG_ARM)
-    {
-        extern int $Super$$main(void);
-        $Super$$main(); /* for ARMCC. */
-    }
-#elif defined(__ICCARM__) || defined(__GNUC__) || defined(__TASKING__)
-    main();
-#endif
 }
 
 void rt_application_init(void)
 {
-    rt_thread_t tid1, tid2;
+    rt_thread_t tid;
 
 #ifdef RT_USING_HEAP
-    tid1 = rt_thread_create("umain", main_thread_entry, RT_NULL,
-                           RT_MAIN_THREAD_USER_STACK_SIZE, RT_MAIN_THREAD_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
-    RT_ASSERT(tid1 != RT_NULL);
-    tid2 = rt_thread_create("kmain", main_thread_entry, RT_NULL,
+    tid = rt_thread_create("kmain", main_thread_entry, RT_NULL,
                            0, RT_MAIN_THREAD_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
-    RT_ASSERT(tid2 != RT_NULL);
+    RT_ASSERT(tid != RT_NULL);
 #else
     rt_err_t result;
 
@@ -219,8 +205,7 @@ void rt_application_init(void)
     (void)result;
 #endif
 
-    rt_thread_startup(tid2);
-    rt_thread_startup(tid1);
+    rt_thread_startup(tid);
 }
 
 int rtthread_startup(void)

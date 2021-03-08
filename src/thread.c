@@ -145,7 +145,7 @@ static void _rt_thread_exit(void)
 {
     __asm__ __volatile__
     (
-        "MOV R0, #1\n"
+        "MOV r8, #1\n"
         "SVC #11"
     );
 }

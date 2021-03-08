@@ -3,7 +3,7 @@ from building import *
 
 cwd     = GetCurrentDir()
 src     = []
-CPPPATH = [cwd]
+CPPPATH = [cwd, cwd + '/../dfs/include']
 
 support_arch  = {"arm": ["cortex-m7"]}
 platform_file = {'gcc': 'gcc.S'}
@@ -12,10 +12,9 @@ if rtconfig.PLATFORM in platform_file.keys():	# support platforms
     if rtconfig.ARCH in support_arch.keys() and rtconfig.CPU in support_arch[rtconfig.ARCH]:
         # arch/arm/cortex-m7/svc_gcc.S
         asm_path = 'arch/' + rtconfig.ARCH + '/' + rtconfig.CPU + '/*_' + platform_file[rtconfig.PLATFORM]
-        print(asm_path)
         src = Glob('*.c') + Glob(asm_path)
-        CPPPATH = [cwd]
+        CPPPATH = [cwd, cwd + '/../dfs/include', cwd + '/arch/' + rtconfig.ARCH + '/' + rtconfig.CPU + '/']
 
-group = DefineGroup('syscall', src, depend = [''], CPPPATH = CPPPATH)
+group = DefineGroup('syscall', src, depend = ['RT_USING_DFS'], CPPPATH = CPPPATH)
 
 Return('group')

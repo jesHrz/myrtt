@@ -35,6 +35,8 @@ ncscope.*
 #ctag files
 tags
 
+rtua.py
+
 .DS_Store 
 */.DS_Store 
 

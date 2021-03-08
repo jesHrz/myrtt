@@ -549,7 +549,7 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
             tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
-                0, module->stack_size, module->priority, 10);
+                module->stack_size, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
