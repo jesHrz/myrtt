@@ -13,33 +13,30 @@
 build
 Debug
 documentation/html
+packages/
 *~
 *.o
 *.obj
+*.out
 *.bak
 *.dep
 *.lib
-*.a
 *.i
 *.d
-tools/kconfig-frontends/kconfig-mconf
-packages
-dist
-cconfig.h
-GPUCache
-
-#cscope files
-cscope.*
-ncscope.*
-
-#ctag files
-tags
-
-rtua.py
-
-.DS_Store 
-*/.DS_Store 
-
-components/lwp
+.DS_Stor*
+.config 3
+.config 4
+.config 5
+Midea-X1
+*.uimg
+GPATH
+GRTAGS
+GTAGS
 .vscode
-.idea
+JLinkLog.txt
+JLinkSettings.ini
+DebugConfig/
+RTE/
+settings/
+*.uvguix*
+cconfig.h
