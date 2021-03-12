@@ -143,7 +143,7 @@ static void _dlmodule_thread_entry(void* parameter)
     int argc = 0;
     char *argv[RT_MODULE_ARG_MAX];
 
-    struct rt_dlmodule *module = (struct rt_dlmodule*)((void **)parameter)[0];
+    struct rt_dlmodule *module = (struct rt_dlmodule*)parameter;
 
     if (module == RT_NULL || module->cmd_line == RT_NULL)
         /* malloc for module_cmd_line failed. */
@@ -167,7 +167,6 @@ static void _dlmodule_thread_entry(void* parameter)
         module->entry_addr(argc, argv);
 
 __exit:
-    rt_thread_resume((rt_thread_t)((void **)parameter)[1]);
     _dlmodule_exit();
 
     return ;
@@ -552,17 +551,14 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
                 // module->priority = 10;
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
-            extern rt_thread_t rt_current_thread;
-            void *params[] = {(void *)module, (void *)rt_current_thread};
-
-            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)params, 
+            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
                 module->stack_size, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
                 module->main_thread = tid;
 
-                rt_thread_suspend(rt_current_thread);
+                rt_thread_join(tid);
                 rt_thread_startup(tid);
             }
             else

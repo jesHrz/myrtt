@@ -622,6 +622,8 @@ struct rt_thread
 
     rt_uint8_t  stat;                                   /**< thread status */
 
+    struct rt_thread *joined_tid;                             /**< wait until one thread exit */
+
 #ifdef RT_USING_SMP
     rt_uint8_t  bind_cpu;                               /**< thread is bind to cpu */
     rt_uint8_t  oncpu;                                  /**< process on cpu` */
