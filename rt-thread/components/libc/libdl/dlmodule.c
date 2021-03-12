@@ -143,7 +143,7 @@ static void _dlmodule_thread_entry(void* parameter)
     int argc = 0;
     char *argv[RT_MODULE_ARG_MAX];
 
-    struct rt_dlmodule *module = (struct rt_dlmodule*)parameter;
+    struct rt_dlmodule *module = (struct rt_dlmodule*)((void **)parameter)[0];
 
     if (module == RT_NULL || module->cmd_line == RT_NULL)
         /* malloc for module_cmd_line failed. */
@@ -167,6 +167,7 @@ static void _dlmodule_thread_entry(void* parameter)
         module->entry_addr(argc, argv);
 
 __exit:
+    rt_thread_resume((rt_thread_t)((void **)parameter)[1]);
     _dlmodule_exit();
 
     return ;
@@ -182,7 +183,8 @@ struct rt_dlmodule *dlmodule_create(void)
         module->stat = RT_DLMODULE_STAT_INIT;
 
         /* set initial priority and stack size */
-        module->priority = RT_THREAD_PRIORITY_MAX - 1;
+        // module->priority = RT_THREAD_PRIORITY_MAX - 1;
+        module->priority = 10;
         module->stack_size = 2048;
 
         rt_list_init(&(module->object_list));
@@ -545,16 +547,22 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             module->cmd_line = rt_strdup(cmd);
 
             /* check stack size and priority */
-            if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
+            if (module->priority > RT_THREAD_PRIORITY_MAX) 
+                module->priority = RT_THREAD_PRIORITY_MAX - 1;
+                // module->priority = 10;
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
-            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
+            extern rt_thread_t rt_current_thread;
+            void *params[] = {(void *)module, (void *)rt_current_thread};
+
+            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)params, 
                 module->stack_size, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
                 module->main_thread = tid;
 
+                rt_thread_suspend(rt_current_thread);
                 rt_thread_startup(tid);
             }
             else
@@ -860,6 +868,7 @@ int list_symbols(void)
          index != _rt_module_symtab_end;
          index ++)
     {
+        if (strcmp(index->name, "printf") == 0)
         rt_kprintf("%s => 0x%08x\n", index->name, index->addr);
     }
 

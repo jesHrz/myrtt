@@ -31,6 +31,7 @@
 
 #include <rthw.h>
 #include <rtthread.h>
+#include <syscall.h>
 
 extern rt_list_t rt_thread_defunct;
 
@@ -145,8 +146,11 @@ static void _rt_thread_exit(void)
 {
     __asm__ __volatile__
     (
-        "MOV r8, #1\n"
-        "SVC #11"
+        "mov r8, %0\n"
+        "svc %1\n"
+        :
+        :"i"(SYS_exit), "i"(SYS_syscall)
+        :
     );
 }
 

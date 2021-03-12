@@ -445,29 +445,6 @@ int fcntl(int fildes, int cmd, ...)
 }
 RTM_EXPORT(fcntl);
 
-int _fcntl(int fildes, int cmd, void *arg)
-{
-    int ret = -1;
-    struct dfs_fd *d;
-
-    /* get the fd */
-    d = fd_get(fildes);
-    if (d)
-    {
-        ret = dfs_file_ioctl(d, cmd, arg);
-        fd_put(d);
-    }
-    else ret = -EBADF;
-
-    if (ret < 0)
-    {
-        rt_set_errno(ret);
-        ret = -1;
-    }
-
-    return ret;
-}
-
 /**
  * this function is a POSIX compliant version, which shall perform a variety of
  * control functions on devices.

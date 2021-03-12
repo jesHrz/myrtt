@@ -1,7 +1,6 @@
-#ifndef __RT_SYSCALL_H_
-#define __RT_SYSCALL_H_
+#ifndef __LIB_SYSCALLS_H_
+#define __LIB_SYSCALLS_H_
 
-#define NR_SYSCALL                          22
 #define SYS_syscall                         0
 
 #define SYS_exit                            0
@@ -27,4 +26,5 @@
 #define SYS_calloc                          20
 #define SYS_free                            21
 
-#endif // __RT_SYSCALL_H_
+
+#endif //__LIB_SYSCALLS_H_
