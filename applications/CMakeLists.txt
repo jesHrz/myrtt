@@ -36,7 +36,7 @@ aux_source_directory(${APP} APP_SRCS)
 aux_source_directory(newlib NEWLIB_SRCS)
 
 add_executable("${APP_TARGET}" ${APP_SRCS} ${NEWLIB_SRCS})
-target_link_libraries("${APP_TARGET}" "-lc")
+target_link_libraries("${APP_TARGET}" -lc)
 
 add_custom_target(strip
     COMMAND ${STRIP} -R .hash ${APP_TARGET}

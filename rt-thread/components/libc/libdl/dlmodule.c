@@ -558,8 +558,8 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
                 tid->module_id = module;
                 module->main_thread = tid;
 
-                rt_thread_join(tid);
                 rt_thread_startup(tid);
+                rt_thread_join(tid);
             }
             else
             {

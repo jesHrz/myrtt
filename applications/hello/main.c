@@ -1,10 +1,13 @@
 #include <stdio.h>
-#include <syscall.h>
 
 int main()
 {
-    int a, b;
-    scanf("%d%d", &a, &b);
-    printf("%d\n", a + b);
+    char *c;
+    int n;
+    
+    scanf("%d", &n);
+    c = (char *)malloc(n + 1);
+    scanf("%s", c);
+    printf("you input: %s\n", c);
     return 0;
 }

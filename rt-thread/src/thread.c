@@ -1000,6 +1000,8 @@ rt_err_t rt_thread_join(rt_thread_t joined)
         return -RT_ERROR;
     }
 
+    rt_schedule();
+
     return RT_EOK;
 }
 
