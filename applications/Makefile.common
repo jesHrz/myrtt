@@ -1,0 +1,112 @@
+ifndef MAKEFILE_COMMON
+define MAKEFILE_COMMON
+yes
+endef
+
+include ../Makefile.depends
+
+s_ofiles = $(SFILES:%.s=$(OBJ_DIR)/%.o)
+c_ofiles = $(CFILES:%.c=$(OBJ_DIR)/%.o)
+cc_ofiles = $(CCFILES:%.cc=$(OBJ_DIR)/%.o)
+
+ofiles = $(cc_ofiles) $(c_ofiles) $(s_ofiles) 
+
+$(TARGET): $(ofiles)
+	@echo ">>> Linking" $@ "<<<"
+	@mkdir -p $(@D)
+	$(V)$(LD) $^ $(LD_FLAGS) -o $@
+	$(V)$(STRIP) -R .hash $@
+	$(V)$(SIZE) $@
+
+# Building object files (.o) from C++ source (.cc) files.
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.cc
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+
+# Building object files (.o) from C source (.c) files.
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.c
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+
+# Building object files (.o) from assembly source (.s) files.
+#
+# We run assembly files through the C pre-processor, before passing
+# them on to the assembler.
+#
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.s
+	@echo ">>> Assembling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+
+# Automatic dependency generation: see gmake info documentation for
+# full details.  This stuff supercedes the old make depend stuff.
+
+# We want to build a .d file for every source file (.s, .c, .cc), which
+# contains make rules generated automatically by gcc/cpp.  The .d files
+# are to be included later in this Makefile.
+
+s_dfiles = $(SFILES:%.S=$(DEPENDS_DIR)/%.d)
+c_dfiles = $(CFILES:%.c=$(DEPENDS_DIR)/%.d)
+cc_dfiles = $(CCFILES:%.cc=$(DEPENDS_DIR)/%.d
+
+dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles) 
+
+# The following set of rules define how to build dependency files
+# automatically from various source files.  These rules have been
+# taken from the gmake documentation with minor modifications.
+
+$(DEPENDS_DIR)/%.d: %.cc
+	@echo ">>> Building dependency file for " $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.c
+	@echo ">>> Building dependency file for" $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.S
+	@echo ">>> Building dependency file for" $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+# Include the generated dependency files.  Note gnu make treats these
+# files in a special way.  Each of them is treated as a sort of
+# target.  If for example, one of the .d files in $(dfiles) depends on
+# a .c file that has been re-compiled, the above rules will cause the
+# .d file to be re-generated.  GNU make will detect this, and re-read
+# the makefiles again so that any changes from the .c file are
+# correctly reflected by the dependency graph.
+
+# The short of it is that this Makefile will automatically infer the complete
+# up-to-date dependencies between .{c,cc,s} files and .h files.
+
+include $(dfiles)
+
+# Clean out all generated files.  Note: this only cleans the files
+# corresponding to the current architecture.  
+
+# Also note, there is quirk when you do two make clean's in a row, or 
+# rather, make clean on an already clean directory.
+
+# Because of the way the dependency stuff above works, before doing the
+# second clean, GNU make will regenerate dependency information, which
+# was removed by the first clean.  Finally, the second clean will remove
+# the dependency information it just created... blech.
+
+dist-clean:
+	rm -f ${TARGET}
+
+clean:
+	rm -rf ${BUILD_DIR}
+	rm -f ${TARGET}
+
+endif # MAKEFILE_COMMON

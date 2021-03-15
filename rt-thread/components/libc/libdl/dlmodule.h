@@ -23,7 +23,7 @@ typedef void* rt_addr_t;
 
 typedef void (*rt_dlmodule_init_func_t)(struct rt_dlmodule *module);
 typedef void (*rt_dlmodule_cleanup_func_t)(struct rt_dlmodule *module);
-typedef int  (*rt_dlmodule_entry_func_t)(int argc, char** argv);
+typedef void  (*rt_dlmodule_entry_func_t)(void *);
 
 struct rt_dlmodule
 {

@@ -1,0 +1,14 @@
+ifndef MAKEFILE_HELLO_LOCAL
+define MAKEFILE_HELLO_LOCAL
+yes
+endef
+
+vpath %.h ../newlib/include
+vpath %.c ../newlib
+vpath %.S ../newlib
+
+CFILES += main.c \
+
+TARGET := hello.mo
+
+endif # MAKEFILE_HELLO_LOCAL

@@ -138,38 +138,9 @@ static void _dlmodule_exit(void)
     return;
 }
 
-static void _dlmodule_thread_entry(void* parameter)
+void dlmodule_cleanup(void)
 {
-    int argc = 0;
-    char *argv[RT_MODULE_ARG_MAX];
-
-    struct rt_dlmodule *module = (struct rt_dlmodule*)parameter;
-
-    if (module == RT_NULL || module->cmd_line == RT_NULL)
-        /* malloc for module_cmd_line failed. */
-        return;
-
-    if (module->cmd_line)
-    {
-        rt_memset(argv, 0x00, sizeof(argv));
-        argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
-        if (argc == 0) goto __exit;
-    }
-
-    /* set status of module */
-    module->stat = RT_DLMODULE_STAT_RUNNING;
-
-    LOG_D("run main entry: 0x%p with %s",
-        module->entry_addr,
-        module->cmd_line);
-
-    if (module->entry_addr)
-        module->entry_addr(argc, argv);
-
-__exit:
     _dlmodule_exit();
-
-    return ;
 }
 
 struct rt_dlmodule *dlmodule_create(void)
@@ -182,8 +153,7 @@ struct rt_dlmodule *dlmodule_create(void)
         module->stat = RT_DLMODULE_STAT_INIT;
 
         /* set initial priority and stack size */
-        // module->priority = RT_THREAD_PRIORITY_MAX - 1;
-        module->priority = 10;
+        module->priority = 20;
         module->stack_size = 2048;
 
         rt_list_init(&(module->object_list));
@@ -546,13 +516,13 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             module->cmd_line = rt_strdup(cmd);
 
             /* check stack size and priority */
-            if (module->priority > RT_THREAD_PRIORITY_MAX) 
-                module->priority = RT_THREAD_PRIORITY_MAX - 1;
-                // module->priority = 10;
+            if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
-            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
-                module->stack_size, module->stack_size, module->priority, 10);
+            // tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
+            //     module->stack_size, module->stack_size, module->priority, 10);
+            tid = rt_thread_create(module->parent.name, module->entry_addr, RT_NULL,
+                   module->stack_size, module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
@@ -750,6 +720,28 @@ struct rt_dlmodule* dlmodule_exec_custom(const char* pgname, const char* cmd, in
     return module;
 }
 #endif
+
+void dlmodule_init(int *argc, char *argv[])
+{
+    struct rt_dlmodule *module = (struct rt_dlmodule *)dlmodule_self();
+
+    if (module == RT_NULL || module->cmd_line == RT_NULL)
+        /* malloc for module_cmd_line failed. */
+        return -1;
+
+    if (module->cmd_line)
+    {
+        *argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
+        if (*argc == 0) return -1;
+    }
+
+    /* set status of module */
+    module->stat = RT_DLMODULE_STAT_RUNNING;
+
+    LOG_D("run main entry: 0x%p with %s",
+        module->entry_addr,
+        module->cmd_line);
+}
 
 void dlmodule_exit(int ret_code)
 {

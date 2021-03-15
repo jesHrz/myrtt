@@ -1,7 +1,9 @@
-#include "lib_syscalls.h"
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+
+#include "lib_syscalls.h"
 
 extern long syscall_0(int);
 extern long syscall_1(int, long);
@@ -118,4 +120,14 @@ int sys_calloc(size_t size, size_t len)
 int sys_free(void *addr)
 {
     return syscall_1(SYS_free, (long)addr);
+}
+
+int sys_dlmodule_init(int *argc, char *argv[])
+{
+    return syscall_2(SYS_dlmodule_init, (long)argc, (long)argv);
+}
+
+int sys_dlmodule_cleanup()
+{
+    return syscall_0(SYS_dlmodule_cleanup);
 }

@@ -31,8 +31,8 @@ SVC_Handler:
     STMFD   r1!, {r0}           /* push flag */
 #endif
     MSR  psp, r1
-    MOV r4, r1
-    MOV r5, r2
+    MOV r4, r1                  // r4 = new psp
+    MOV r5, r2                  // r5 = old psp
     POP {r1, r2}
 
     LDR r0, [r5, #0x1c]             // r0: psp + 0x00
@@ -56,7 +56,7 @@ SVC_Handler:
     PUSH {r4}
 
     MRS  r0, CONTROL
-    BIC  r0, 0x01
+    BIC  r0, 0x01       // using msp - unprivileged
     MSR  CONTROL, r0
 
     BIC  lr, #EXC_RETURN_PROCESS_STACK
@@ -72,7 +72,7 @@ syscall_in_thread:
     LDMFD r4!, {lr}
     LDMFD r4!, {r6}
     LDMFD r4!, {r5}
-    ADD r4, #4
+    @ ADD r4, #4
     MSR psp, r4
     MSR psr, r5
 

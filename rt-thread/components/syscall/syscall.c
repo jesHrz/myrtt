@@ -6,6 +6,10 @@
 #include <dfs_posix.h>
 #endif
 
+#ifdef RT_USING_MODULE
+#include <dlmodule.h>
+#endif
+
 int sys_exit(struct stack_frame *sp)
 {
     rt_thread_exit();
@@ -243,29 +247,56 @@ int sys_free(struct stack_frame *sp)
     return 0;
 }
 
+int sys_dlmodule_init(struct stack_frame *sp)
+{
+    int   *argc = (int *)sp->exception_stack_frame.r0;
+    char **argv = (char **)sp->exception_stack_frame.r1;
+
+#ifdef RT_USING_MODULE
+    dlmodule_init(argc, argv);
+    return 0;
+#else
+    return -ENOSYS;
+#endif
+}
+
+int sys_dlmodule_cleanup(struct stack_frame *sp)
+{
+    int ret_code = (int)sp->exception_stack_frame.r0;
+
+#ifdef RT_USING_MODULE
+    dlmodule_cleanup(ret_code);
+    return 0;
+#else
+    return -ENOSYS;
+#endif
+}
+
 void *syscall_table[NR_SYSCALL] = {
-    [SYS_exit]         = (void *)sys_exit,
-    [SYS_read]         = (void *)sys_read,
-    [SYS_write]        = (void *)sys_write,
-    [SYS_lseek]        = (void *)sys_lseek,
-    [SYS_open]         = (void *)sys_open,
-    [SYS_close]        = (void *)sys_close,
-    [SYS_rename]       = (void *)sys_rename,
-    [SYS_stat]         = (void *)sys_stat,
-    [SYS_fstat]        = (void *)sys_fstat,
-    [SYS_fsync]        = (void *)sys_fsync,
-    [SYS_fcntl]        = (void *)sys_fcntl,
-    [SYS_ioctl]        = (void *)sys_ioctl,
-    [SYS_nanosleep]    = (void *)sys_nanosleep,
-    [SYS_gettimeofday] = (void *)sys_gettimeofday,
-    [SYS_settimeofday] = (void *)sys_settimeofday,
-    [SYS_errno]        = (void *)sys_errno,
-    [SYS_mkdir]        = (void *)sys_mkdir,
-    [SYS_unlink]       = (void *)sys_unlink,
-    [SYS_malloc]       = (void *)sys_malloc,
-    [SYS_realloc]      = (void *)sys_realloc,
-    [SYS_calloc]       = (void *)sys_calloc,
-    [SYS_free]         = (void *)sys_free,
+    [SYS_exit]              = (void *)sys_exit,
+    [SYS_read]              = (void *)sys_read,
+    [SYS_write]             = (void *)sys_write,
+    [SYS_lseek]             = (void *)sys_lseek,
+    [SYS_open]              = (void *)sys_open,
+    [SYS_close]             = (void *)sys_close,
+    [SYS_rename]            = (void *)sys_rename,
+    [SYS_stat]              = (void *)sys_stat,
+    [SYS_fstat]             = (void *)sys_fstat,
+    [SYS_fsync]             = (void *)sys_fsync,
+    [SYS_fcntl]             = (void *)sys_fcntl,
+    [SYS_ioctl]             = (void *)sys_ioctl,
+    [SYS_nanosleep]         = (void *)sys_nanosleep,
+    [SYS_gettimeofday]      = (void *)sys_gettimeofday,
+    [SYS_settimeofday]      = (void *)sys_settimeofday,
+    [SYS_errno]             = (void *)sys_errno,
+    [SYS_mkdir]             = (void *)sys_mkdir,
+    [SYS_unlink]            = (void *)sys_unlink,
+    [SYS_malloc]            = (void *)sys_malloc,
+    [SYS_realloc]           = (void *)sys_realloc,
+    [SYS_calloc]            = (void *)sys_calloc,
+    [SYS_free]              = (void *)sys_free,
+    [SYS_dlmodule_init]     = (void *)sys_dlmodule_init,
+    [SYS_dlmodule_cleanup]     = (void *)sys_dlmodule_cleanup,
 };
 
 

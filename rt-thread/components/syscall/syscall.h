@@ -1,7 +1,8 @@
 #ifndef __RT_SYSCALL_H_
 #define __RT_SYSCALL_H_
 
-#define NR_SYSCALL                          22
+#define NR_SYSCALL                          24
+
 #define SYS_syscall                         0
 
 #define SYS_exit                            0
@@ -26,5 +27,7 @@
 #define SYS_realloc                         19
 #define SYS_calloc                          20
 #define SYS_free                            21
+#define SYS_dlmodule_init                   22
+#define SYS_dlmodule_cleanup                23
 
 #endif // __RT_SYSCALL_H_

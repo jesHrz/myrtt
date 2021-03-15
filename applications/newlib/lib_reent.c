@@ -247,6 +247,8 @@ __attribute__ ((noreturn)) void
 _exit (int status)
 {
     sys_exit();
+    /* !!! should not reach there !!! */
+    while(1);
 }
 
 mode_t umask(mode_t mask)

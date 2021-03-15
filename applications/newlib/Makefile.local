@@ -1,0 +1,15 @@
+ifndef MAKEFILE_NEWLIB_LOCAL
+define MAKEFILE_NEWLIB_LOCAL
+yes
+endef
+
+CFILES  +=  lib_reent.c \
+			lib_svcbase.c \
+			lib_syscalls.c \
+			lib_crt0.c \
+
+# SFILES	+= lib_crt0.S \
+
+INCPATH += -I../newlib/include
+
+endif # MAKEFILE_NEWLIB_LOCAL

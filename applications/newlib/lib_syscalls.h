@@ -25,6 +25,8 @@
 #define SYS_realloc                         19
 #define SYS_calloc                          20
 #define SYS_free                            21
+#define SYS_dlmodule_init                   22
+#define SYS_dlmodule_cleanup                23
 
 
 #endif //__LIB_SYSCALLS_H_

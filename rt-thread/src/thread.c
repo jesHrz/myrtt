@@ -997,7 +997,7 @@ rt_err_t rt_thread_join(rt_thread_t joined)
     if (rt_thread_suspend(thread) == -RT_ERROR)
     {
         thread->joined_tid = RT_NULL;
-        return -RT_ERROR;
+        return RT_EOK;
     }
 
     rt_schedule();

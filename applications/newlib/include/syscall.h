@@ -4,8 +4,9 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
-int sys_exit();
+int sys_exit(void);
 int sys_read(int fd, void *buf, size_t len);
 int sys_write(int fd, const void *buf, size_t len);
 int sys_lseek(int fd, off_t offset, int whence);
@@ -20,12 +21,14 @@ int sys_ioctl(int fd, unsigned long cmd, void *data);
 int sys_nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
 int sys_gettimeofday(struct timeval *tp, struct timezone *tzp);
 int sys_settimeofday(struct timeval *tp, struct timezone *tzp);
-int sys_errno();
+int *sys_errno(void);
 int sys_mkdir(const char *path, int mode);
 int sys_unlink(const char *pathname);
 int sys_malloc(size_t size);
 int sys_realloc(void *old, size_t newlen);
 int sys_calloc(size_t size, size_t len);
 int sys_free(void *addr);
+int sys_dlmodule_init(int *argc, char **argv);
+int sys_dlmodule_cleanup(void);
 
 #endif // __INCLUDE_SYSCALL_H_
