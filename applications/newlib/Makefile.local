@@ -8,8 +8,7 @@ CFILES  +=  lib_reent.c \
 			lib_syscalls.c \
 			lib_crt0.c \
 
-# SFILES	+= lib_crt0.S \
-
 INCPATH += -I../newlib/include
+DEFINES += -DRT_USING_NEWLIB
 
 endif # MAKEFILE_NEWLIB_LOCAL

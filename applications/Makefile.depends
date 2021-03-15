@@ -23,10 +23,12 @@ LD	  := $(GCC_TOOLCHAIN)gcc
 STRIP := ${GCC_TOOLCHAIN}strip
 SIZE  := ${GCC_TOOLCHAIN}size
 
+DEFINES += -DSTM32F746xx -DUSE_HAL_DRIVER -D__RTTHREAD__ -DHAVE_CCONFIG_H
+
 MCU_FLAGS := -mcpu=${CPU} -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=soft -ffunction-sections -fdata-sections
-CC_FLAGS  := ${MCU_FLAGS} $(INCPATH) -g -Wall -mlong-calls -fPIC
-CXX_FLAGS := -Woverloaded-virtual -fno-exceptions -fno-rtti -mlong-calls -fPIC
-LD_FLAGS  := ${MCU_FLAGS} ${CXX_FLAGS}  -Wl,--gc-sections,-z,max-page-size=0x4 -Wl,--no-undefined -nostartfiles -static-libgcc -shared -e _start -lc
+CC_FLAGS  := ${MCU_FLAGS} ${INCPATH} ${DEFINES} -g -Wall -mlong-calls -fPIC
+CXX_FLAGS := ${CC_FLAGS} -Woverloaded-virtual -fno-exceptions -fno-rtti
+LD_FLAGS  := ${CXX_FLAGS}  -Wl,--gc-sections,-z,max-page-size=0x4 -Wl,--no-undefined -nostartfiles -static-libgcc -shared -e _start -lc
 
 BUILD_DIR := build
 OBJ_DIR   := ${BUILD_DIR}/obj

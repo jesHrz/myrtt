@@ -5,9 +5,9 @@ endef
 
 include ../Makefile.depends
 
-s_ofiles = $(SFILES:%.s=$(OBJ_DIR)/%.o)
+s_ofiles = $(SFILES:%.S=$(OBJ_DIR)/%.o)
 c_ofiles = $(CFILES:%.c=$(OBJ_DIR)/%.o)
-cc_ofiles = $(CCFILES:%.cc=$(OBJ_DIR)/%.o)
+cc_ofiles = $(CCFILES:%.cpp=$(OBJ_DIR)/%.o)
 
 ofiles = $(cc_ofiles) $(c_ofiles) $(s_ofiles) 
 
@@ -20,10 +20,10 @@ $(TARGET): $(ofiles)
 
 # Building object files (.o) from C++ source (.cc) files.
 # See the comment above for executables regarding multiple rules.
-$(OBJ_DIR)/%.o: %.cc
+$(OBJ_DIR)/%.o: %.cpp
 	@echo ">>> Compiling" $< "<<<"
 	@mkdir -p $(@D)
-	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+	$(V)$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 # Building object files (.o) from C source (.c) files.
 # See the comment above for executables regarding multiple rules.
@@ -38,7 +38,7 @@ $(OBJ_DIR)/%.o: %.c
 # them on to the assembler.
 #
 # See the comment above for executables regarding multiple rules.
-$(OBJ_DIR)/%.o: %.s
+$(OBJ_DIR)/%.o: %.S
 	@echo ">>> Assembling" $< "<<<"
 	@mkdir -p $(@D)
 	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
@@ -52,7 +52,7 @@ $(OBJ_DIR)/%.o: %.s
 
 s_dfiles = $(SFILES:%.S=$(DEPENDS_DIR)/%.d)
 c_dfiles = $(CFILES:%.c=$(DEPENDS_DIR)/%.d)
-cc_dfiles = $(CCFILES:%.cc=$(DEPENDS_DIR)/%.d
+cc_dfiles = $(CCFILES:%.cpp=$(DEPENDS_DIR)/%.d
 
 dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles) 
 
@@ -60,7 +60,7 @@ dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles)
 # automatically from various source files.  These rules have been
 # taken from the gmake documentation with minor modifications.
 
-$(DEPENDS_DIR)/%.d: %.cc
+$(DEPENDS_DIR)/%.d: %.cpp
 	@echo ">>> Building dependency file for " $< "<<<"
 	@mkdir -p $(@D)
 	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
