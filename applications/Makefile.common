@@ -3,7 +3,39 @@ define MAKEFILE_COMMON
 yes
 endef
 
-include ../Makefile.depends
+# Run 'make V=1' to turn on verbose commands, or 'make V=0' to turn them off.
+ifeq ($(V),1)
+override V =
+else
+override V = @
+endif
+
+CPU := cortex-m7
+
+GCC_PREFIX    := /opt/gcc-arm-none-eabi-10-2020-q4-major
+GCC_TOOLCHAIN := ${GCC_PREFIX}/bin/arm-none-eabi-
+GCC_LIB		  := ${GCC_PREFIX}/arm-none-eabi/lib/thumb/v7-m/nofp/
+
+CC    := ${GCC_TOOLCHAIN}gcc
+CXX   := ${GCC_TOOLCHAIN}g++
+AS	  := $(GCC_TOOLCHAIN)gcc
+LD	  := $(GCC_TOOLCHAIN)gcc
+STRIP := ${GCC_TOOLCHAIN}strip
+SIZE  := ${GCC_TOOLCHAIN}size
+
+LINKSCRIPT_PATH := ../linker_scripts
+LINKSCIPRT := ${LINKSCRIPT_PATH}/link.lds
+
+DEFINES += -DSTM32F746xx -DUSE_HAL_DRIVER -D__RTTHREAD__ -DHAVE_CCONFIG_H
+
+MCU_FLAGS := -mcpu=${CPU} -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=soft -ffunction-sections -fdata-sections
+CC_FLAGS  += ${MCU_FLAGS} ${INCPATH} ${DEFINES} -g -Wall -mlong-calls -fPIC
+CXX_FLAGS += ${CC_FLAGS} -Woverloaded-virtual -fno-exceptions -fno-rtti
+LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCIPRT} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -static-libgcc -lc -Wl,--no-undefined -shared
+
+BUILD_DIR := build
+OBJ_DIR   := ${BUILD_DIR}/obj
+DEPENDS_DIR := ${BUILD_DIR}/depends
 
 s_ofiles = $(SFILES:%.S=$(OBJ_DIR)/%.o)
 c_ofiles = $(CFILES:%.c=$(OBJ_DIR)/%.o)
@@ -52,7 +84,8 @@ $(OBJ_DIR)/%.o: %.S
 
 s_dfiles = $(SFILES:%.S=$(DEPENDS_DIR)/%.d)
 c_dfiles = $(CFILES:%.c=$(DEPENDS_DIR)/%.d)
-cc_dfiles = $(CCFILES:%.cpp=$(DEPENDS_DIR)/%.d
+cc_dfiles = $(CCFILES:%.cpp=$(DEPENDS_DIR)/%.d)
+
 
 dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles) 
 
@@ -63,19 +96,19 @@ dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles)
 $(DEPENDS_DIR)/%.d: %.cpp
 	@echo ">>> Building dependency file for " $< "<<<"
 	@mkdir -p $(@D)
-	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	@$(SHELL) -ec '$(CXX) -MM $(CXX_FLAGS) $< \
 	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
 
 $(DEPENDS_DIR)/%.d: %.c
 	@echo ">>> Building dependency file for" $< "<<<"
 	@mkdir -p $(@D)
-	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	@$(SHELL) -ec '$(CC) -MM $(CC_FLAGS) $< \
 	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
 
 $(DEPENDS_DIR)/%.d: %.S
 	@echo ">>> Building dependency file for" $< "<<<"
 	@mkdir -p $(@D)
-	@$(SHELL) -ec '$(CC) -MM $(CFLAGS) $< \
+	@$(SHELL) -ec '$(CC) -MM $(CC_FLAGS) $< \
 	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
 
 # Include the generated dependency files.  Note gnu make treats these

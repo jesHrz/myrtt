@@ -253,8 +253,7 @@ int sys_dlmodule_init(struct stack_frame *sp)
     char **argv = (char **)sp->exception_stack_frame.r1;
 
 #ifdef RT_USING_MODULE
-    dlmodule_init(argc, argv);
-    return 0;
+    return dlmodule_init(argc, argv);
 #else
     return -ENOSYS;
 #endif

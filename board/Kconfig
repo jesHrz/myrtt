@@ -103,7 +103,7 @@ menu "On-chip Peripheral Drivers"
         default n
         
     config BSP_USING_FMC
-        bool
+        bool "FMC enable"
         default n
 
     config BSP_USING_LTDC

@@ -721,18 +721,18 @@ struct rt_dlmodule* dlmodule_exec_custom(const char* pgname, const char* cmd, in
 }
 #endif
 
-void dlmodule_init(int *argc, char *argv[])
+int dlmodule_init(int *argc, char *argv[])
 {
     struct rt_dlmodule *module = (struct rt_dlmodule *)dlmodule_self();
 
     if (module == RT_NULL || module->cmd_line == RT_NULL)
         /* malloc for module_cmd_line failed. */
-        return -1;
+        return RT_ERROR;
 
     if (module->cmd_line)
     {
         *argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
-        if (*argc == 0) return -1;
+        if (*argc == 0) return RT_ERROR;
     }
 
     /* set status of module */
@@ -741,6 +741,8 @@ void dlmodule_init(int *argc, char *argv[])
     LOG_D("run main entry: 0x%p with %s",
         module->entry_addr,
         module->cmd_line);
+    
+    return RT_EOK;
 }
 
 void dlmodule_exit(int ret_code)

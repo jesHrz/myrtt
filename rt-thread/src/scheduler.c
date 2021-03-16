@@ -78,7 +78,10 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
 {
     RT_ASSERT(thread != RT_NULL);
 
-    if (thread->user_stack_addr != RT_NULL)
+    // 开启 RT_USING_MEMHEAP_AS_HEAP 后 rt_malloc 至少给分配 RT_MEMHEAP_MINIALLOC 大小字节的内存
+    // 因此无法通过 user_stack_addr == RT_NULL 来判断应用跑在用户态还是内核态
+    // 可以通过 user_stack_size 来判断
+    if (thread->user_stack_size > 0)
     {
     #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
         if (*((rt_uint8_t *)((rt_ubase_t)thread->user_stack_addr + thread->user_stack_size - 1)) != '#' ||

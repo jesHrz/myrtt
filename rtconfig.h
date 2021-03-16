@@ -26,12 +26,12 @@
 #define RT_USING_EVENT
 #define RT_USING_MAILBOX
 #define RT_USING_MESSAGEQUEUE
-#define RT_USING_SIGNALS
 
 /* Memory Management */
 
 #define RT_USING_MEMPOOL
-#define RT_USING_SMALL_MEM
+#define RT_USING_MEMHEAP
+#define RT_USING_MEMHEAP_AS_HEAP
 #define RT_USING_HEAP
 
 /* Kernel Device Object */
@@ -53,6 +53,9 @@
 #define RT_MAIN_THREAD_KERNEL_STACK_SIZE 2048
 #define RT_MAIN_THREAD_USER_STACK_SIZE 4096
 #define RT_MAIN_THREAD_PRIORITY 10
+
+/* C++ features */
+
 
 /* Command shell */
 
@@ -118,9 +121,6 @@
 #define RT_USING_POSIX
 #define RT_USING_MODULE
 
-/* Utilities */
-
-
 /* RT-Thread online packages */
 
 /* IoT - internet of things */
@@ -176,6 +176,7 @@
 /* Onboard Peripheral Drivers */
 
 #define BSP_USING_USB_TO_USART
+#define BSP_USING_SDRAM
 #define BSP_USING_SDCARD
 
 /* On-chip Peripheral Drivers */
@@ -184,6 +185,7 @@
 #define BSP_USING_UART
 #define BSP_USING_UART1
 #define BSP_USING_SDIO
+#define BSP_USING_FMC
 
 /* Board extended module Drivers */
 

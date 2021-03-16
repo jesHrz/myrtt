@@ -16,7 +16,6 @@ try:
     from building import *
 except:
     print('Cannot found RT-Thread root directory, please check RTT_ROOT')
-    print(RTT_ROOT)
     exit(-1)
 
 TARGET = 'rt-thread.' + rtconfig.TARGET_EXT

@@ -1,0 +1,21 @@
+ifndef MAKEFILE_CXX_LOCAL
+define MAKEFILE_CXX_LOCAL
+yes
+endef
+
+vpath %.h ../newlib/include:../cplusplus
+vpath %.c ../newlib:../cplusplus
+vpath %.cpp ../newlib:../cplusplus
+vpath %.S ../newlib:../cplusplus
+
+# CFILES += main.c \
+
+CCFILES += cxx.cpp \
+
+INCPATH += -I.
+
+LD_FLAGS = -lstdc++_nano
+
+TARGET := cxx.mo
+
+endif
