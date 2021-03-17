@@ -24,14 +24,14 @@ STRIP := ${GCC_TOOLCHAIN}strip
 SIZE  := ${GCC_TOOLCHAIN}size
 
 LINKSCRIPT_PATH := ../linker_scripts
-LINKSCIPRT := ${LINKSCRIPT_PATH}/link.lds
+LINKSCRIPT := ${LINKSCRIPT_PATH}/link.lds
 
 DEFINES += -DSTM32F746xx -DUSE_HAL_DRIVER -D__RTTHREAD__ -DHAVE_CCONFIG_H
 
 MCU_FLAGS := -mcpu=${CPU} -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=soft -ffunction-sections -fdata-sections
 CC_FLAGS  += ${MCU_FLAGS} ${INCPATH} ${DEFINES} -g -Wall -mlong-calls -fPIC
 CXX_FLAGS += ${CC_FLAGS} -Woverloaded-virtual -fno-exceptions -fno-rtti
-LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCIPRT} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -static-libgcc -lc -Wl,--no-undefined -shared
+LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCRIPT} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -lc -static-libgcc -Wl,--no-undefined -shared
 
 BUILD_DIR := build
 OBJ_DIR   := ${BUILD_DIR}/obj
@@ -47,7 +47,7 @@ $(TARGET): $(ofiles)
 	@echo ">>> Linking" $@ "<<<"
 	@mkdir -p $(@D)
 	$(V)$(LD) $^ $(LD_FLAGS) -o $@
-	$(V)$(STRIP) -R .hash $@
+	# $(V)$(STRIP) -R .hash $@
 	$(V)$(SIZE) $@
 
 # Building object files (.o) from C++ source (.cc) files.

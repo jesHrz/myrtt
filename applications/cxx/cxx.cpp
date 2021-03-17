@@ -1,19 +1,19 @@
-#include <stdio.h>
+// #include <stdio.h>
 #include <vector>
-// #include <iostream>
+#include <iostream>
 #include "cxx.h"
 
 A::A()
     : a(0)
 {
-    // std::cout << "A::A()" << std::endl;
-    printf("A::A()\n");
+    std::cout << "A::A()" << std::endl;
+    // printf("A::A()\n");
 }
 
 A::~A()
 {
-    // std::cout << "A::~A()" << std::endl;
-    printf("A::~A()\n");
+    std::cout << "A::~A()" << std::endl;
+    // printf("A::~A()\n");
 }
 
 void A::setA(int value)
@@ -28,8 +28,8 @@ int A::getA(void)
 
 void A::toString()
 {
-    // std::cout << "A::a = " << a << std::endl;
-    printf("A::a = %d\n", a);
+    std::cout << "A::a = " << a << std::endl;
+    // printf("A::a = %d\n", a);
 }
 
 A a;
@@ -37,7 +37,8 @@ A a;
 int main(void)
 {
     A *b = new A;
-    printf("b=%p\n", b);
+    // printf("b=%p\n", b);
+    std::cout << "b=" << b << std::endl;
     a.setA(100);
     a.toString();
     b->setA(150);
@@ -45,7 +46,9 @@ int main(void)
 
     std::vector<int> v;
     for (int i = 0; i < 10; ++i)    v.push_back(i);
-    for (int i = 9; i >= 0; --i)    printf("%d\n", v[i]);
+    for (int i = 9; i >= 0; --i)    
+        std::cout << v[i] << std::endl; 
+        // printf("%d\n", v[i]);
 
     delete b;
 

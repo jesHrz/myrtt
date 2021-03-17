@@ -25,10 +25,13 @@ _getpid_r(struct _reent *ptr)
 int
 _close_r(struct _reent *ptr, int fd)
 {
-    int ret = sys_close(fd);
-    if (ret != -ENOSYS)
-        return ret;
-    ptr->_errno = ENOTSUP;
+    if (fd > 2)
+    {
+        int ret = sys_close(fd);
+        if (ret != -ENOSYS)
+            return ret;
+        ptr->_errno = ENOTSUP;
+    }
     return -1;
 }
 
