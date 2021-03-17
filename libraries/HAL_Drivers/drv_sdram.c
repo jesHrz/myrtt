@@ -176,7 +176,7 @@ static int SDRAM_Init(void)
     }
     else
     {
-        /* remap SDRAM to 0x60000000 and 0x70000000
+        /* remap SDRAM to 0x60000000 and 0x70000000 */
         __HAL_SYSCFG_REMAPMEMORY_FMC_SDRAM();
         /* Program the SDRAM external device */
         SDRAM_Initialization_Sequence(&hsdram1, &command);

@@ -24,8 +24,6 @@ config RT_USING_USER_MAIN
             default 85  if RT_THREAD_PRIORITY_256
     endif
 
-source "$RTT_DIR/components/cplusplus/Kconfig"
-
 source "$RTT_DIR/components/finsh/Kconfig"
 
 source "$RTT_DIR/components/dfs/Kconfig"

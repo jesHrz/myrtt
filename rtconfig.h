@@ -54,9 +54,6 @@
 #define RT_MAIN_THREAD_USER_STACK_SIZE 4096
 #define RT_MAIN_THREAD_PRIORITY 10
 
-/* C++ features */
-
-
 /* Command shell */
 
 #define RT_USING_FINSH
