@@ -2,7 +2,11 @@
 
 long syscall_0(int nr)
 {
-    asm("push {r4-r11}");
+    asm
+    (
+        "push {r4-r11}\n"
+        "mov r12, sp\n"
+    );
     register long reg8 __asm__("r8") = (long) nr;
     register long reg0 __asm__("r0") = 0;
     __asm__ __volatile__
@@ -19,7 +23,11 @@ long syscall_0(int nr)
 
 long syscall_1(int nr, long arg1)
 {
-    asm("push {r4-r11}");
+    asm
+    (
+        "push {r4-r11}\n"
+        "mov r12, sp\n"
+    );
     register long reg8 __asm__("r8") = (long) nr;
     register long reg0 __asm__("r0") = (long) arg1;
     __asm__ __volatile__
@@ -36,7 +44,11 @@ long syscall_1(int nr, long arg1)
 
 long syscall_2(int nr, long arg1, long arg2)
 {
-    asm("push {r4-r11}");
+    asm
+    (
+        "push {r4-r11}\n"
+        "mov r12, sp\n"
+    );
     register long reg8 __asm__("r8") = (long) nr;
     register long reg1 __asm__("r1") = (long) arg2;
     register long reg0 __asm__("r0") = (long) arg1;
@@ -54,7 +66,11 @@ long syscall_2(int nr, long arg1, long arg2)
 
 long syscall_3(int nr, long arg1, long arg2, long arg3)
 {
-    asm("push {r4-r11}");
+    asm
+    (
+        "push {r4-r11}\n"
+        "mov r12, sp\n"
+    );
     register long reg8 __asm__("r8") = (long) nr;
     register long reg2 __asm__("r2") = (long) arg3;
     register long reg1 __asm__("r1") = (long) arg2;
@@ -73,7 +89,11 @@ long syscall_3(int nr, long arg1, long arg2, long arg3)
 
 long syscall_4(int nr, long arg1, long arg2, long arg3, long arg4)
 {
-    asm("push {r4-r11}");
+    asm
+    (
+        "push {r4-r11}\n"
+        "mov r12, sp\n"
+    );
     register long reg8 __asm__("r8") = (long) nr;
     register long reg3 __asm__("r3") = (long) arg4;
     register long reg2 __asm__("r2") = (long) arg3;

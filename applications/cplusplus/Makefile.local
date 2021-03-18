@@ -3,8 +3,10 @@ define MAKEFILE_CPLUSPLUS_LOCAL
 yes
 endef
 
-CCFILES += cxx_crt.cpp \
+CXXFILES += \
+    ../cplusplus/cxx_crt.cpp
 
-INCPATH += -I../cplusplus
+INCPATH += \
+    -I../cplusplus
 
 endif

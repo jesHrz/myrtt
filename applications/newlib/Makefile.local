@@ -3,12 +3,16 @@ define MAKEFILE_NEWLIB_LOCAL
 yes
 endef
 
-CFILES  +=  lib_reent.c \
-			lib_svcbase.c \
-			lib_syscalls.c \
-			lib_crt0.c \
+CFILES  +=  \
+	../newlib/lib_reent.c \
+	../newlib/lib_svcbase.c \
+	../newlib/lib_syscalls.c \
+	../newlib/lib_crt0.c
 
-INCPATH += -I../newlib/include
-DEFINES += -DRT_USING_NEWLIB
+INCPATH += \
+	-I../newlib/include
+	
+DEFINES += \
+	-DRT_USING_NEWLIB
 
 endif # MAKEFILE_NEWLIB_LOCAL

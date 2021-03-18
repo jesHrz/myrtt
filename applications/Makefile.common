@@ -31,7 +31,7 @@ DEFINES += -DSTM32F746xx -DUSE_HAL_DRIVER -D__RTTHREAD__ -DHAVE_CCONFIG_H
 MCU_FLAGS := -mcpu=${CPU} -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=soft -ffunction-sections -fdata-sections
 CC_FLAGS  += ${MCU_FLAGS} ${INCPATH} ${DEFINES} -g -Wall -mlong-calls -fPIC
 CXX_FLAGS += ${CC_FLAGS} -Woverloaded-virtual -fno-exceptions -fno-rtti
-LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCRIPT} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -lc -static-libgcc -Wl,--no-undefined -shared
+LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCRIPT} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -lc -lm -static-libgcc -Wl,--no-undefined -shared
 
 BUILD_DIR := build
 OBJ_DIR   := ${BUILD_DIR}/obj
@@ -39,20 +39,26 @@ DEPENDS_DIR := ${BUILD_DIR}/depends
 
 s_ofiles = $(SFILES:%.S=$(OBJ_DIR)/%.o)
 c_ofiles = $(CFILES:%.c=$(OBJ_DIR)/%.o)
-cc_ofiles = $(CCFILES:%.cpp=$(OBJ_DIR)/%.o)
+cc_ofiles = $(CCFILES:%.cc=$(OBJ_DIR)/%.o)
+cxx_ofiles = $(CXXFILES:%.cpp=$(OBJ_DIR)/%.o) 
 
-ofiles = $(cc_ofiles) $(c_ofiles) $(s_ofiles) 
+ofiles = $(cc_ofiles) $(cxx_ofiles) $(c_ofiles) $(s_ofiles) 
 
 $(TARGET): $(ofiles)
 	@echo ">>> Linking" $@ "<<<"
 	@mkdir -p $(@D)
 	$(V)$(LD) $^ $(LD_FLAGS) -o $@
-	# $(V)$(STRIP) -R .hash $@
+	$(V)$(STRIP) -R .hash $@
 	$(V)$(SIZE) $@
 
 # Building object files (.o) from C++ source (.cc) files.
 # See the comment above for executables regarding multiple rules.
 $(OBJ_DIR)/%.o: %.cpp
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CXX) $(CXX_FLAGS) -c -o $@ $<
+
+$(OBJ_DIR)/%.o: %.cc
 	@echo ">>> Compiling" $< "<<<"
 	@mkdir -p $(@D)
 	$(V)$(CXX) $(CXX_FLAGS) -c -o $@ $<
@@ -84,16 +90,22 @@ $(OBJ_DIR)/%.o: %.S
 
 s_dfiles = $(SFILES:%.S=$(DEPENDS_DIR)/%.d)
 c_dfiles = $(CFILES:%.c=$(DEPENDS_DIR)/%.d)
-cc_dfiles = $(CCFILES:%.cpp=$(DEPENDS_DIR)/%.d)
+cc_dfiles = $(CCFILES:%.cc=$(DEPENDS_DIR)/%.d)
+cxx_dfiles = $(CXXFILES:%.cpp=$(DEPENDS_DIR)/%.d)
 
-
-dfiles = $(cc_dfiles) $(c_dfiles) $(s_dfiles) 
+dfiles = $(cc_dfiles) $(cxx_dfiles) $(c_dfiles) $(s_dfiles) 
 
 # The following set of rules define how to build dependency files
 # automatically from various source files.  These rules have been
 # taken from the gmake documentation with minor modifications.
 
 $(DEPENDS_DIR)/%.d: %.cpp
+	@echo ">>> Building dependency file for " $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CXX) -MM $(CXX_FLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.cc
 	@echo ">>> Building dependency file for " $< "<<<"
 	@mkdir -p $(@D)
 	@$(SHELL) -ec '$(CXX) -MM $(CXX_FLAGS) $< \

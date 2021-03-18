@@ -72,8 +72,7 @@ syscall_in_thread:
     LDMFD r4!, {lr}
     LDMFD r4!, {r6}
     LDMFD r4!, {r5}
-    @ ADD r4, #4
-    MSR psp, r4
+    MSR psp, r12
     MSR psr, r5
 
     MRS r4, CONTROL

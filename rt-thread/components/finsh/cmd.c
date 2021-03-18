@@ -176,7 +176,7 @@ long list_thread(void)
     maxlen = RT_NAME_MAX;
 
 #ifdef RT_USING_SMP
-    rt_kprintf("%-*.s cpu pri  status      sp     ustack sz   max used    ksp     kstack sz   max used  left tick   error\n", maxlen, item_title); object_split(maxlen);
+    rt_kprintf("%-*.s cpu pri  status      usp    ustack sz   max used    ksp     kstack sz   max used  left tick   error\n", maxlen, item_title); object_split(maxlen);
     rt_kprintf(     " --- ---  ------- ---------- ----------  -------- ---------- ----------  --------  ----------  -----\n");
 #else
     rt_kprintf("%-*.s pri  status      usp    ustack sz   max used    ksp     kstack sz   max used  left tick   error\n", maxlen, item_title); object_split(maxlen);
@@ -260,7 +260,7 @@ long list_thread(void)
                     {
                         ptr = (rt_uint8_t *)thread->user_stack_addr;
                         while (*ptr == '#')ptr ++;
-                        rt_kprintf(" 0x%08x 0x%08x 0x%08x  %02d%%     ",
+                        rt_kprintf(" 0x%08x 0x%08x    %02d%%   ",
                             thread->user_stack_size + ((rt_ubase_t)thread->user_stack_addr - (rt_ubase_t)thread->usp),
                             thread->user_stack_size,
                             (thread->user_stack_size - ((rt_ubase_t) ptr - (rt_ubase_t) thread->user_stack_addr)) * 100
@@ -269,7 +269,7 @@ long list_thread(void)
 
                     ptr = (rt_uint8_t *)thread->kernel_stack_addr;
                     while (*ptr == '#')ptr ++;
-                    rt_kprintf(" 0x%08x 0x%08x  %02d%%      ",
+                    rt_kprintf(" 0x%08x 0x%08x    %02d%%    ",
                         thread->kernel_stack_size + ((rt_ubase_t)thread->kernel_stack_addr - (rt_ubase_t)thread->ksp),
                         thread->kernel_stack_size,
                         (thread->kernel_stack_size - ((rt_ubase_t) ptr - (rt_ubase_t) thread->kernel_stack_addr)) * 100

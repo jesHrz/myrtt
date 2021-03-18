@@ -3,11 +3,8 @@ define MAKEFILE_HELLO_LOCAL
 yes
 endef
 
-vpath %.h ../newlib/include
-vpath %.c ../newlib
-vpath %.S ../newlib
-
-CFILES += main.c \
+CFILES += \
+    main.c \
 
 TARGET := hello.mo
 
