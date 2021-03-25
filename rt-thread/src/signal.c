@@ -485,6 +485,7 @@ void rt_thread_free_sig(rt_thread_t tid)
     rt_base_t level;
     struct siginfo_node *si_node;
     rt_sighandler_t *sig_vectors;
+    void            *sig_stack;
 
     level = rt_hw_interrupt_disable();
     si_node = (struct siginfo_node *)tid->si_list;
@@ -492,6 +493,9 @@ void rt_thread_free_sig(rt_thread_t tid)
 
     sig_vectors = tid->sig_vectors;
     tid->sig_vectors = RT_NULL;
+
+    sig_stack = tid->sig_stack;
+    tid->sig_stack = RT_NULL;
     rt_hw_interrupt_enable(level);
 
     if (si_node)
@@ -513,6 +517,11 @@ void rt_thread_free_sig(rt_thread_t tid)
     if (sig_vectors)
     {
         RT_KERNEL_FREE(sig_vectors);
+    }
+
+    if (sig_stack)
+    {
+        RT_KERNEL_FREE(sig_stack);
     }
 }
 
@@ -559,17 +568,18 @@ static int _syscall_handle_sig(rt_thread_t tid, int alloc)
         {
             if (alloc)
             {
-                tid->sig_stack = (void *)RT_KERNEL_MALLOC(1024);
+                tid->sig_stack = (void *)RT_KERNEL_MALLOC(RT_MAIN_THREAD_USER_STACK_SIZE);
                 if (tid->sig_stack == RT_NULL)
                 {
                     rt_hw_interrupt_enable(level);
                     return -ENOMEM;
                 }
+                rt_memset(tid->sig_stack, '#', RT_MAIN_THREAD_USER_STACK_SIZE);
             }
 
             tid->sig_ret = tid->usp;
             tid->usp = rt_hw_stack_init(handler, (void *)signo, 
-                (void *)((char *)tid->sig_stack + 1024 - sizeof(rt_ubase_t)), 
+                (void *)((char *)tid->sig_stack + RT_MAIN_THREAD_USER_STACK_SIZE - sizeof(rt_ubase_t)), 
                 _lib_syscall_sigreturn);
         }
        
@@ -688,7 +698,7 @@ int sys_kill(struct stack_frame *sp)
 
     return rt_thread_kill(tid, signo);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -704,7 +714,7 @@ int sys_sigreturn(struct stack_frame *sp)
     tid->usp = tid->sig_ret;
     tid->sig_stack = RT_NULL;
 
-    if (rc = _syscall_handle_sig(tid, RT_FALSE))
+    if ((rc = _syscall_handle_sig(tid, RT_FALSE)))
     {
         rt_free(tid->sig_stack);
         tid->sig_ret = RT_NULL;
@@ -723,6 +733,45 @@ int sys_signal(struct stack_frame *sp)
 #ifdef RT_USING_SIGNALS
     return (int)rt_signal_install(sig, handler);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
+#endif
+}
+
+int sys_sigprocmask(struct stack_frame *sp)
+{
+#ifdef RT_USING_SIGNALS
+    int how = (int)sp->exception_stack_frame.r0;
+    const sigset_t *set = (const sigset_t *)sp->exception_stack_frame.r1;
+    sigset_t *oset = (sigset_t *)sp->exception_stack_frame.r2;
+    rt_base_t level;
+    rt_thread_t tid;
+
+    tid = rt_thread_self();
+
+    level = rt_hw_interrupt_disable();
+    if (oset) *oset = tid->sig_mask;
+
+    if (set)
+    {
+        switch(how)
+        {
+        case SIG_BLOCK:
+            tid->sig_mask |= *set;
+            break;
+        case SIG_UNBLOCK:
+            tid->sig_mask &= ~*set;
+            break;
+        case SIG_SETMASK:
+            tid->sig_mask =  *set;
+            break;
+        default:
+            break;
+        }
+    }
+    rt_hw_interrupt_enable(level);
+
+    return 0;
+#else
+    return -ENOTSUP;
 #endif
 }

@@ -1,0 +1,16 @@
+ifndef MAKEFILE_CPLUSPLUS_LOCAL
+define MAKEFILE_CPLUSPLUS_LOCAL
+yes
+endef
+
+ifndef APP_ROOT
+APP_ROOT := ..
+endif
+
+CXXFILES += \
+    $(APP_ROOT)/SDK/cplusplus/cxx_crt.cpp
+
+INCPATH += \
+    -I$(APP_ROOT)/SDK/cplusplus
+
+endif

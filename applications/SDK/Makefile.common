@@ -1,0 +1,162 @@
+ifndef MAKEFILE_COMMON
+define MAKEFILE_COMMON
+yes
+endef
+
+# Run 'make V=1' to turn on verbose commands, or 'make V=0' to turn them off.
+ifeq ($(V),1)
+override V =
+else
+override V = @
+endif
+
+ifndef APP_ROOT
+APP_ROOT := ..
+endif
+
+CPU := cortex-m7
+
+GCC_PREFIX    	  := $(APP_ROOT)/SDK/gcc/gcc-arm-none-eabi-10-2020-q4-major-mac
+NEWLIB_INC_PATH   := $(GCC_PREFIX)/arm-none-eabi/include
+NEWLIB_LIB_PATH   := $(GCC_PREFIX)/arm-none-eabi/lib/thumb/v7e-m/nofp
+LINKSCRIPT_PATH   := ${APP_ROOT}/SDK/linker_scripts/link.lds
+INCPATH += -I$(NEWLIB_INC_PATH)
+
+GCC_TOOLCHAIN := ${GCC_PREFIX}/bin/arm-none-eabi-
+CC    := ${GCC_TOOLCHAIN}gcc
+CXX   := ${GCC_TOOLCHAIN}g++
+AS	  := $(GCC_TOOLCHAIN)gcc
+LD	  := $(GCC_TOOLCHAIN)gcc
+STRIP := ${GCC_TOOLCHAIN}strip
+SIZE  := ${GCC_TOOLCHAIN}size
+
+
+DEFINES += -DSTM32F746xx -DUSE_HAL_DRIVER -D__RTTHREAD__ -DHAVE_CCONFIG_H
+
+MCU_FLAGS := -mcpu=${CPU} -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=soft -ffunction-sections -fdata-sections
+CC_FLAGS  += ${MCU_FLAGS} ${INCPATH} ${DEFINES} -g -Wall -mlong-calls -fPIE
+CXX_FLAGS += ${CC_FLAGS} -Woverloaded-virtual -fno-exceptions -fno-rtti
+LD_FLAGS  += ${CXX_FLAGS} -T ${LINKSCRIPT_PATH} -Wl,--gc-sections,-z,max-page-size=0x4 -nostartfiles -L${NEWLIB_LIB_PATH} -lc -lm -static-libgcc -pie
+
+BUILD_DIR := build
+OBJ_DIR   := ${BUILD_DIR}/obj
+DEPENDS_DIR := ${BUILD_DIR}/depends
+
+s_ofiles = $(SFILES:%.S=$(OBJ_DIR)/%.o)
+c_ofiles = $(CFILES:%.c=$(OBJ_DIR)/%.o) $(NEWLIB_LIB_PATH)/crt0.o
+cc_ofiles = $(CCFILES:%.cc=$(OBJ_DIR)/%.o)
+cxx_ofiles = $(CXXFILES:%.cpp=$(OBJ_DIR)/%.o)
+
+ofiles = $(cc_ofiles) $(cxx_ofiles) $(c_ofiles) $(s_ofiles)
+
+$(TARGET): $(ofiles)
+	@echo ">>> Linking" $@ "<<<"
+	@mkdir -p $(@D)
+	$(V)$(LD) $^ $(LD_FLAGS) -o $@
+	$(V)$(STRIP) -R .hash $@
+	$(V)$(SIZE) $@
+
+# Building object files (.o) from C++ source (.cc) files.
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.cpp
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CXX) $(CXX_FLAGS) -c -o $@ $<
+
+$(OBJ_DIR)/%.o: %.cc
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CXX) $(CXX_FLAGS) -c -o $@ $<
+
+# Building object files (.o) from C source (.c) files.
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.c
+	@echo ">>> Compiling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+
+# Building object files (.o) from assembly source (.s) files.
+#
+# We run assembly files through the C pre-processor, before passing
+# them on to the assembler.
+#
+# See the comment above for executables regarding multiple rules.
+$(OBJ_DIR)/%.o: %.S
+	@echo ">>> Assembling" $< "<<<"
+	@mkdir -p $(@D)
+	$(V)$(CC) $(CC_FLAGS) -c -o $@ $<
+
+# Automatic dependency generation: see gmake info documentation for
+# full details.  This stuff supercedes the old make depend stuff.
+
+# We want to build a .d file for every source file (.s, .c, .cc), which
+# contains make rules generated automatically by gcc/cpp.  The .d files
+# are to be included later in this Makefile.
+
+s_dfiles = $(SFILES:%.S=$(DEPENDS_DIR)/%.d)
+c_dfiles = $(CFILES:%.c=$(DEPENDS_DIR)/%.d)
+cc_dfiles = $(CCFILES:%.cc=$(DEPENDS_DIR)/%.d)
+cxx_dfiles = $(CXXFILES:%.cpp=$(DEPENDS_DIR)/%.d)
+
+dfiles = $(cc_dfiles) $(cxx_dfiles) $(c_dfiles) $(s_dfiles) 
+
+# The following set of rules define how to build dependency files
+# automatically from various source files.  These rules have been
+# taken from the gmake documentation with minor modifications.
+
+$(DEPENDS_DIR)/%.d: %.cpp
+	@echo ">>> Building dependency file for " $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CXX) -MM $(CXX_FLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.cc
+	@echo ">>> Building dependency file for " $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CXX) -MM $(CXX_FLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.c
+	@echo ">>> Building dependency file for" $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CC) -MM $(CC_FLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+$(DEPENDS_DIR)/%.d: %.S
+	@echo ">>> Building dependency file for" $< "<<<"
+	@mkdir -p $(@D)
+	@$(SHELL) -ec '$(CC) -MM $(CC_FLAGS) $< \
+	| sed '\''s@$*.o[ ]*:@$(DEPENDS_DIR)/$(notdir $@) $(OBJ_DIR)/&@g'\'' > $@'
+
+# Include the generated dependency files.  Note gnu make treats these
+# files in a special way.  Each of them is treated as a sort of
+# target.  If for example, one of the .d files in $(dfiles) depends on
+# a .c file that has been re-compiled, the above rules will cause the
+# .d file to be re-generated.  GNU make will detect this, and re-read
+# the makefiles again so that any changes from the .c file are
+# correctly reflected by the dependency graph.
+
+# The short of it is that this Makefile will automatically infer the complete
+# up-to-date dependencies between .{c,cc,s} files and .h files.
+
+include $(dfiles)
+
+# Clean out all generated files.  Note: this only cleans the files
+# corresponding to the current architecture.  
+
+# Also note, there is quirk when you do two make clean's in a row, or 
+# rather, make clean on an already clean directory.
+
+# Because of the way the dependency stuff above works, before doing the
+# second clean, GNU make will regenerate dependency information, which
+# was removed by the first clean.  Finally, the second clean will remove
+# the dependency information it just created... blech.
+
+dist-clean:
+	rm -f ${TARGET}
+
+clean:
+	rm -rf ${BUILD_DIR}
+	rm -f ${TARGET}
+
+endif # MAKEFILE_COMMON

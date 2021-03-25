@@ -41,3 +41,5 @@ settings/
 *.uvguix*
 cconfig.h
 *.mo
+
+.DS_Store

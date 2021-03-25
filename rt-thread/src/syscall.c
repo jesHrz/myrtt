@@ -24,7 +24,7 @@ int sys_read(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return read(fd, buf, len);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -46,7 +46,7 @@ int sys_write(struct stack_frame *sp)
     return 0;
 #else
     /* return "not supported" */
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif /*RT_USING_DEVICE*/
 #else
     return write(fd, buf, nbytes);
@@ -61,7 +61,7 @@ int sys_lseek(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return (int)lseek(fd, offset, whence);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -73,7 +73,7 @@ int sys_open(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return open(name, flags, mode);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -83,7 +83,7 @@ int sys_close(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return close(fd);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -94,7 +94,7 @@ int sys_rename(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return rename(old_file, new_file);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -116,7 +116,7 @@ int sys_fstat(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return fstat(file, buf);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -126,7 +126,7 @@ int sys_fsync(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return fsync(fildes);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -138,7 +138,7 @@ int sys_fcntl(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return fcntl(fildes, cmd, args);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -150,7 +150,7 @@ int sys_ioctl(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return ioctl(fd, cmd, data);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -206,7 +206,7 @@ int sys_mkdir(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return mkdir(path, mode);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -216,7 +216,7 @@ int sys_unlink(struct stack_frame *sp)
 #ifdef RT_USING_DFS
     return unlink(pathname);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -255,7 +255,7 @@ int sys_dlmodule_init(struct stack_frame *sp)
 #ifdef RT_USING_MODULE
     return dlmodule_init(argc, argv);
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
@@ -267,13 +267,14 @@ int sys_dlmodule_cleanup(struct stack_frame *sp)
     dlmodule_cleanup(ret_code);
     return 0;
 #else
-    return -ENOSYS;
+    return -ENOTSUP;
 #endif
 }
 
 extern int sys_signal(struct stack_frame *);
 extern int sys_kill(struct stack_frame *);
 extern int sys_sigreturn(struct stack_frame *);
+extern int sys_sigprocmask(struct stack_frame *);
 
 int sys_getpid(struct stack_frame *sp)
 {
@@ -329,6 +330,7 @@ static void *syscall_table[NR_SYSCALL] = {
     [SYS_sigreturn]         = (void *)sys_sigreturn,
     [SYS_getpid]            = (void *)sys_getpid,
     [SYS_getpidbyname]      = (void *)sys_getpidbyname,
+    [SYS_sigprocmask]       = (void *)sys_sigprocmask,
 };
 
 rt_ubase_t syscall_dispatch(struct stack_frame *sp)

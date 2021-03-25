@@ -3,10 +3,20 @@ define MAKEFILE_TFLITE
 yes
 endef
 
-include ./Makefile.local
-include ../newlib/Makefile.local
-include ../cplusplus/Makefile.local
+APP_ROOT := ..
+CXXFILES += \
+	main.cpp
+
+INCPATH += \
+	-I.
+
+LD_FLAGS += \
+	-lstdc++_nano
+
+TARGET := mnist.mo
+
 include ../tflite-mcu/Makefile.local
-include ../Makefile.common
+include $(APP_ROOT)/SDK/cplusplus/Makefile.local
+include $(APP_ROOT)/SDK/Makefile.common
 
 endif

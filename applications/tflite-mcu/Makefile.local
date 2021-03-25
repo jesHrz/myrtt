@@ -1,0 +1,104 @@
+ifndef MAKEFILE_TFLITE_LOCAL
+define MAKEFILE_TFLITE_LOCAL
+yes
+endef
+
+ifndef APP_ROOT
+APP_ROOT := ..
+endif
+
+TFLITE_SRCS = \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/all_ops_resolver.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/debug_log.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/memory_helpers.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_allocator.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_error_reporter.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_interpreter.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_profiler.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_string.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_time.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/micro_utils.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/recording_micro_allocator.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/recording_simple_memory_allocator.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/simple_memory_allocator.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/test_helpers.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/benchmarks/keyword_scrambled_model_data.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/memory_planner/greedy_memory_planner.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/memory_planner/linear_memory_planner.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/testing/test_conv_model.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/core/api/error_reporter.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/core/api/flatbuffer_conversions.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/core/api/op_resolver.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/core/api/tensor_utils.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/kernels/internal/quantization_util.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/kernels/kernel_util.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/schema/schema_utils.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/activations.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/arg_min_max.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/ceil.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/circular_buffer.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/comparisons.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/concatenation.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/dequantize.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/detection_postprocess.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/elementwise.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/ethosu.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/flexbuffers_generated_data.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/floor.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/hard_swish.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/kernel_runner.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/kernel_util.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/l2norm.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/logical.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/logistic.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/maximum_minimum.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/neg.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/pack.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/pad.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/prelu.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/quantize.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/quantize_common.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/reduce.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/reshape.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/resize_nearest_neighbor.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/round.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/shape.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/split.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/split_v.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/strided_slice.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/sub.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/svdf_common.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/tanh.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/transpose_conv.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/unpack.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/add.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/conv.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/depthwise_conv.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/fully_connected.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/mul.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/pooling.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/softmax.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/kernels/svdf.cc
+
+DEMO_SRCS = \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/examples/hello_world/main.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/examples/hello_world/main_functions.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/examples/hello_world/model.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/examples/hello_world/output_handler.cc \
+	$(APP_ROOT)/tflite-mcu/source/tensorflow/lite/micro/examples/hello_world/constants.cc
+
+CCFILES += $(TFLITE_SRCS) $(DEMO_SRCS)
+CFILES += $(APP_ROOT)/tflite-mcu/source/tensorflow/lite/c/common.c \
+
+INCPATH += \
+	-I$(APP_ROOT)/tflite-mcu/source \
+	-I$(APP_ROOT)/tflite-mcu/source/third_party/gemmlowp \
+	-I$(APP_ROOT)/tflite-mcu/source/third_party/flatbuffers/include \
+	-I$(APP_ROOT)/tflite-mcu/source/third_party/ruy
+
+DEFINES += \
+	-DTF_LITE_USE_GLOBAL_CMATH_FUNCTIONS \
+	-DTF_LITE_USE_GLOBAL_MAX \
+	-DTF_LITE_USE_GLOBAL_MIN
+
+endif

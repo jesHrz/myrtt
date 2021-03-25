@@ -83,6 +83,10 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
     // 可以通过 user_stack_size 来判断
     if (thread->user_stack_size > 0)
     {
+    #if defined(RT_USING_SIGNALS)
+        if (thread->sig_ret == RT_NULL)
+        {
+    #endif
     #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
         if (*((rt_uint8_t *)((rt_ubase_t)thread->user_stack_addr + thread->user_stack_size - 1)) != '#' ||
     #else
@@ -110,6 +114,9 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
         {
             rt_kprintf("warning: %s user stack is close to end of stack address.\n",
                     thread->name);
+        }
+    #endif
+    #if defined(RT_USING_SIGNALS)
         }
     #endif
     }

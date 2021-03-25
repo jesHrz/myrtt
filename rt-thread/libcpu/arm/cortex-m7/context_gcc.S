@@ -109,13 +109,14 @@ PendSV_Handler:
     LDR r1, [r0]
     CBZ r1, switch_to_thread    /* skip register save at the first time */
 
-    @ TST lr, #EXC_RETURN_PROCESS_STACK           /* 根据lr的第3位判断线程返回后使用PSP还是MSP，*/
-    @                                             /* 如果使用PSP 则说明之前运行在用户态 */
-    @                                             /* 如果使用MSP 则说明之前运行在内核态 */
+    
     AND r12, lr,  #RT_THREAD_LR_MASK
     LSR r12, r12, #2                /* r12=(lr&0x0C)>>2 */
     STR r12, [r1, #LR_OFFSET]       /* from_thread->lr = r12 */
 
+    /* 根据lr的第3位判断线程返回后使用PSP还是MSP，*/
+    /* 如果使用PSP 则说明之前运行在用户态 */
+    /* 如果使用MSP 则说明之前运行在内核态 */
     TST r12, #RT_THREAD_PSP
     MRSNE r1, psp
     MRSEQ r1, msp

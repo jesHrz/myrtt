@@ -1,0 +1,3 @@
+[submodule "applications/SDK/myrtt-newlib"]
+	path = applications/SDK/myrtt-newlib
+	url = https://github.com/jesHrz/myrtt-newlib.git

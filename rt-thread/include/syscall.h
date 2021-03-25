@@ -1,7 +1,7 @@
 #ifndef __RT_SYSCALL_H_
 #define __RT_SYSCALL_H_
 
-#define NR_SYSCALL                          29
+#define NR_SYSCALL                          30
 
 #define SYS_syscall                         0
 
@@ -34,5 +34,6 @@
 #define SYS_sigreturn                       26
 #define SYS_getpid                          27
 #define SYS_getpidbyname                    28
+#define SYS_sigprocmask                     29
 
 #endif // __RT_SYSCALL_H_
