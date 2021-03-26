@@ -550,16 +550,21 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
 
             /* check stack size and priority */
             if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
-            // if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
+#ifdef RT_USING_SYSCALLS
             tid = RT_THREAD_CREATE(module->parent.name, (void(*)(void*))module->entry_addr, RT_NULL, 
                 module->stack_size, module->priority, 10);
+#else
+            tid = RT_THREAD_CREATE(module->parent.name, _dlmodule_thread_entry, (void *)module, 
+                module->stack_size, module->priority, 10);
+#endif
             if (tid)
             {
                 tid->module_id = module;
                 module->main_thread = tid;
 
                 rt_thread_startup(tid);
+                rt_thread_join(tid);
             }
             else
             {
@@ -792,6 +797,32 @@ void dlmodule_exit(int ret_code)
     /* enable scheduling */
     rt_exit_critical();
 }
+
+#ifdef RT_USING_SYSCALLS
+int dlmodule_init(int *argc, char *argv[])
+{
+    struct rt_dlmodule *module = (struct rt_dlmodule *)dlmodule_self();
+
+    if (module == RT_NULL || module->cmd_line == RT_NULL)
+        /* malloc for module_cmd_line failed. */
+        return RT_ERROR;
+
+    if (module->cmd_line)
+    {
+        *argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
+        if (*argc == 0) return RT_ERROR;
+    }
+
+    /* set status of module */
+    module->stat = RT_DLMODULE_STAT_RUNNING;
+
+    LOG_D("run main entry: 0x%p with %s",
+        module->entry_addr,
+        module->cmd_line);
+    
+    return RT_EOK;
+}
+#endif
 
 rt_uint32_t dlmodule_symbol_find(const char *sym_str)
 {

@@ -119,6 +119,23 @@ static void _rt_thread_exit(void)
         :
     );
 }
+
+static void rt_thread_cleanup(struct rt_thread *tid)
+{
+    struct rt_object_information *information;
+    struct rt_thread *thread;
+    rt_list_t *p;
+
+    information = rt_object_get_information(RT_Object_Class_Thread);
+    RT_ASSERT(information != RT_NULL);
+
+    for (p = information->object_list.next; p != &information->object_list; p = p->next)
+    {
+        thread = rt_container_of(p, struct rt_thread, list);
+        if (thread != tid && thread->joined_tid == tid)
+            rt_thread_resume(thread);
+    }
+}
 #endif
 
 void rt_thread_exit(void)
@@ -257,7 +274,11 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
 #endif /*RT_USING_SMP*/
 
     /* initialize cleanup function and user data */
+#ifdef RT_USING_SYSCALLS
+    thread->cleanup   = rt_thread_cleanup;
+#else
     thread->cleanup   = 0;
+#endif
     thread->user_data = 0;
 
     /* initialize thread timer */
@@ -1007,5 +1028,37 @@ rt_thread_t rt_thread_find(char *name)
     return (rt_thread_t)rt_object_find(name, RT_Object_Class_Thread);
 }
 RTM_EXPORT(rt_thread_find);
+
+rt_err_t rt_thread_join(rt_thread_t joined)
+{
+    struct rt_thread *thread = rt_thread_self();
+
+    /* thread check */
+    RT_ASSERT(joined != RT_NULL);
+    RT_ASSERT(rt_object_get_type((rt_object_t)joined) == RT_Object_Class_Thread);
+
+    RT_ASSERT(thread != RT_NULL);
+    RT_ASSERT(rt_object_get_type((rt_object_t)thread) == RT_Object_Class_Thread);
+
+    if (thread == joined)
+    {
+        RT_DEBUG_LOG(RT_DEBUG_THREAD, ("thread join:  join self %s\n", joined->name));
+        return -RT_ERROR;
+    }
+
+    RT_DEBUG_LOG(RT_DEBUG_THREAD, ("thread join:  %s\n", joined->name));
+
+    thread->joined_tid = joined;
+    if (rt_thread_suspend(thread) == -RT_ERROR)
+    {
+        thread->joined_tid = RT_NULL;
+        return RT_EOK;
+    }
+
+    rt_schedule();
+
+    return RT_EOK;
+}
+RTM_EXPORT(rt_thread_join);
 
 /**@}*/

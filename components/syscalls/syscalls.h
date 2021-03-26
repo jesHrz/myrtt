@@ -3,7 +3,7 @@
 
 typedef int (*rt_syscall_func_t)(int, int, int, int);
 
-#define NR_SYSCALL                          30
+#define NR_SYSCALL                          29
 
 #define SYS_syscall                         0
 
@@ -30,12 +30,11 @@ typedef int (*rt_syscall_func_t)(int, int, int, int);
 #define SYS_calloc                          20
 #define SYS_free                            21
 #define SYS_dlmodule_init                   22
-#define SYS_dlmodule_cleanup                23
-#define SYS_signal                          24
-#define SYS_kill                            25
-#define SYS_sigreturn                       26
-#define SYS_getpid                          27
-#define SYS_getpidbyname                    28
-#define SYS_sigprocmask                     29
+#define SYS_signal                          23
+#define SYS_kill                            24
+#define SYS_sigreturn                       25
+#define SYS_getpid                          26
+#define SYS_getpidbyname                    27
+#define SYS_sigprocmask                     28
 
 #endif // __RT_SYSCALLS_H_

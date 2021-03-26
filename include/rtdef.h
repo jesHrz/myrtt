@@ -633,6 +633,7 @@ struct rt_thread
     struct rt_timer thread_timer;                       /**< built-in thread timer */
 
     void (*cleanup)(struct rt_thread *tid);             /**< cleanup function when thread exit */
+    struct rt_thread *joined_tid;
 
     /* light weight process if present */
 #ifdef RT_USING_LWP

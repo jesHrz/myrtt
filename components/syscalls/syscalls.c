@@ -13,7 +13,7 @@
 int
 sys_exit (int rc)
 {
-    rt_thread_exit();
+    dlmodule_exit(rc);
     return 0;
 }
 
@@ -249,27 +249,16 @@ sys_free (void *addr)
     return 0;
 }
 
-// int
-// sys_dlmodule_init (int   *argc,
-//                    char **argv)
-// {
-// #ifdef RT_USING_MODULE
-//     return dlmodule_init(argc, argv);
-// #else
-//     return -ENOTSUP;
-// #endif
-// }
-
-// int
-// sys_dlmodule_cleanup (int rc)
-// {
-// #ifdef RT_USING_MODULE
-//     dlmodule_cleanup(rc);
-//     return 0;
-// #else
-//     return -ENOTSUP;
-// #endif
-// }
+int
+sys_dlmodule_init (int   *argc,
+                   char **argv)
+{
+#ifdef RT_USING_MODULE
+    return dlmodule_init(argc, argv);
+#else
+    return -ENOTSUP;
+#endif
+}
 
 // extern int sys_signal(struct stack_frame *);
 // extern int sys_kill(struct stack_frame *);
@@ -324,8 +313,7 @@ void *syscall_table[NR_SYSCALL] = {
     [SYS_realloc]           = (void *)sys_realloc,
     [SYS_calloc]            = (void *)sys_calloc,
     [SYS_free]              = (void *)sys_free,
-    // [SYS_dlmodule_init]     = (void *)sys_dlmodule_init,
-    // [SYS_dlmodule_cleanup]  = (void *)sys_dlmodule_cleanup,
+    [SYS_dlmodule_init]     = (void *)sys_dlmodule_init,
     // [SYS_signal]            = (void *)sys_signal,
     // [SYS_kill]              = (void *)sys_kill,
     // [SYS_sigreturn]         = (void *)sys_sigreturn,
