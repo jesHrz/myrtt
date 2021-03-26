@@ -182,8 +182,13 @@ struct rt_dlmodule *dlmodule_create(void)
         module->stat = RT_DLMODULE_STAT_INIT;
 
         /* set initial priority and stack size */
+#ifdef RT_USING_SYSCALLS
+        module->priority = 20;
+        module->stack_size = RT_USER_STACK_SIZE;
+#else
         module->priority = RT_THREAD_PRIORITY_MAX - 1;
         module->stack_size = 2048;
+#endif
 
         rt_list_init(&(module->object_list));
     }
@@ -545,9 +550,9 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
 
             /* check stack size and priority */
             if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
-            if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
+            // if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
-            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
+            tid = RT_THREAD_CREATE(module->parent.name, (void(*)(void*))module->entry_addr, RT_NULL, 
                 module->stack_size, module->priority, 10);
             if (tid)
             {

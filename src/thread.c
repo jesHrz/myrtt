@@ -31,6 +31,10 @@
 #include <rthw.h>
 #include <rtthread.h>
 
+#ifdef RT_USING_SYSCALLS
+#include <exc_return.h>
+#endif
+
 extern rt_list_t rt_thread_defunct;
 
 #ifdef RT_USING_HOOK
@@ -102,6 +106,21 @@ static void _thread_cleanup_execute(rt_thread_t thread)
     rt_hw_interrupt_enable(level);
 }
 
+#ifdef RT_USING_SYSCALLS
+#include <syscalls.h>
+static void _rt_thread_exit(void)
+{
+    __asm__ __volatile__
+    (
+        "mov r8, %0\n"
+        "svc %1\n"
+        :
+        :"i"(SYS_exit), "i"(SYS_syscall)
+        :
+    );
+}
+#endif
+
 void rt_thread_exit(void)
 {
     struct rt_thread *thread;
@@ -146,6 +165,10 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
                                 void             *parameter,
                                 void             *stack_start,
                                 rt_uint32_t       stack_size,
+#ifdef RT_USING_SYSCALLS
+                                void       *user_stack_start,
+                                rt_uint32_t user_stack_size,
+#endif
                                 rt_uint8_t        priority,
                                 rt_uint32_t       tick)
 {
@@ -161,15 +184,47 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
 
     /* init thread stack */
     rt_memset(thread->stack_addr, '#', thread->stack_size);
-#ifdef ARCH_CPU_STACK_GROWS_UPWARD
-    thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
-                                          (void *)((char *)thread->stack_addr),
-                                          (void *)rt_thread_exit);
-#else
-    thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
-                                          (rt_uint8_t *)((char *)thread->stack_addr + thread->stack_size - sizeof(rt_ubase_t)),
-                                          (void *)rt_thread_exit);
+
+#ifdef RT_USING_SYSCALLS
+    thread->user_stack_addr = user_stack_start;
+    thread->user_stack_size = user_stack_size;
+    rt_memset(thread->user_stack_addr, '#', thread->user_stack_size);
+
+    // 线程默认运行在内核态
+    thread->usp = RT_NULL;
+    thread->lr = RT_THREAD_THREAD_MSP;
 #endif
+
+#ifdef RT_USING_SYSCALLS
+    /* 线程运行在用户态 */
+    if (!(thread->user_stack_addr == RT_NULL || thread->user_stack_size == 0))
+    {
+#ifdef ARCH_CPU_STACK_GROWS_UPWARD
+        thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (void *)((char *)thread->user_stack_addr),
+                                            (void *)_rt_thread_exit);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + sizeof(rt_uint32_t)), 8);
+#else
+        thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (rt_uint8_t *)((char *)thread->user_stack_addr + thread->user_stack_size - sizeof(rt_ubase_t)),
+                                            (void *)_rt_thread_exit);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + thread->stack_size + sizeof(rt_uint32_t)), 8);
+#endif
+        thread->lr = RT_THREAD_THREAD_PSP;
+    }
+    else /* 如果 user_stack 是空，那么线程将运行在内核态 */
+#endif //RT_USING_SYSCALLS
+    {
+#ifdef ARCH_CPU_STACK_GROWS_UPWARD
+        thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (void *)((char *)thread->stack_addr),
+                                            (void *)rt_thread_exit);
+#else
+        thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (rt_uint8_t *)((char *)thread->stack_addr + thread->stack_size - sizeof(rt_ubase_t)),
+                                            (void *)rt_thread_exit);
+#endif
+    }
 
     /* priority init */
     RT_ASSERT(priority < RT_THREAD_PRIORITY_MAX);
@@ -277,6 +332,10 @@ rt_err_t rt_thread_init(struct rt_thread *thread,
                            parameter,
                            stack_start,
                            stack_size,
+#ifdef RT_USING_SYSCALLS
+                           RT_NULL,
+                           0,
+#endif
                            priority,
                            tick);
 }
@@ -413,15 +472,21 @@ RTM_EXPORT(rt_thread_detach);
  *
  * @return the created thread object
  */
-rt_thread_t rt_thread_create(const char *name,
+static rt_thread_t _rt_thread_create(const char *name,
                              void (*entry)(void *parameter),
                              void       *parameter,
                              rt_uint32_t stack_size,
+#ifdef RT_USING_SYSCALLS
+                             rt_uint32_t user_stack_size,
+#endif
                              rt_uint8_t  priority,
                              rt_uint32_t tick)
 {
     struct rt_thread *thread;
     void *stack_start;
+#ifdef RT_USING_SYSCALLS
+    void *user_stack_start;
+#endif
 
     thread = (struct rt_thread *)rt_object_allocate(RT_Object_Class_Thread,
                                                     name);
@@ -437,18 +502,66 @@ rt_thread_t rt_thread_create(const char *name,
         return RT_NULL;
     }
 
+#ifdef RT_USING_SYSCALLS
+    user_stack_start = (void *)RT_KERNEL_MALLOC(user_stack_size);
+    if (user_stack_size > 0 && user_stack_start == RT_NULL) 
+    {
+        /* allocate stack failure */
+        rt_object_delete((rt_object_t)thread);
+
+        return RT_NULL;
+    }
+#endif
+
     _rt_thread_init(thread,
                     name,
                     entry,
                     parameter,
                     stack_start,
                     stack_size,
+#ifdef RT_USING_SYSCALLS
+                    user_stack_start,
+                    user_stack_size,
+#endif
                     priority,
                     tick);
 
     return thread;
 }
+
+rt_thread_t rt_thread_create(const char *name,
+                            void (*entry)(void*),
+                            void  *parameter,
+                            rt_uint32_t stack_size,
+                            rt_uint8_t  priority,
+                            rt_uint32_t tick)
+{
+    return _rt_thread_create(name, 
+                            entry, parameter,
+                            stack_size,
+                        #ifdef RT_USING_SYSCALLS
+                            0,
+                        #endif
+                            priority, tick);
+}
 RTM_EXPORT(rt_thread_create);
+
+#ifdef RT_USING_SYSCALLS
+rt_thread_t rt_user_thread_create(const char *name,
+                                void (*entry)(void *),
+                                void  *parameter,
+                                rt_uint32_t user_stack_size,
+                                rt_uint8_t  priority,
+                                rt_uint32_t tick)
+{
+    return _rt_thread_create(name, 
+                            entry, parameter, 
+                            RT_KERNEL_STACK_SIZE, 
+                            user_stack_size, 
+                            priority, tick);
+}
+RTM_EXPORT(rt_user_thread_create);
+#endif
 
 /**
  * This function will delete a thread. The thread object will be removed from

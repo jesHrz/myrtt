@@ -175,6 +175,40 @@ rt_uint8_t *rt_hw_stack_init(void       *tentry,
     return stk;
 }
 
+
+#ifdef RT_USING_SYSCALLS
+#include <syscalls.h>
+#include <exc_return.h>
+
+
+extern void *syscall_table[];
+
+rt_ubase_t rt_hw_syscall_dispatch(void *context)
+{
+    struct stack_frame *sp = (struct stack_frame *)context;
+
+    int rc = -ENOSYS;
+    int sys_nr = sp->r8;
+    rt_thread_t tid = rt_thread_self();
+
+    // update usp
+    tid->usp = context;
+
+    if (sys_nr >= 0 && sys_nr < NR_SYSCALL)
+        rc = ((rt_syscall_func_t)syscall_table[sys_nr])(
+            sp->exception_stack_frame.r0,
+            sp->exception_stack_frame.r1,
+            sp->exception_stack_frame.r2,
+            sp->exception_stack_frame.r3
+        );
+
+    tid->lr = RT_THREAD_THREAD_PSP;
+    sp->exception_stack_frame.r0 = rc;
+
+    return (rt_ubase_t)&tid->sp;
+}
+#endif
+
 /**
  * This function set the hook, which is invoked on fault exception handling.
  *

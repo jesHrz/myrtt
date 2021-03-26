@@ -16,6 +16,10 @@
  * @addtogroup cortex-m4
  */
 /*@{*/
+#include <rtconfig.h>
+#ifdef RT_USING_SYSCALLS
+#include <exc_return.h>
+#endif
 
 .cpu cortex-m4
 .syntax unified
@@ -24,7 +28,7 @@
 
 .equ    SCB_VTOR,           0xE000ED08              /* Vector Table Offset Register */
 .equ    NVIC_INT_CTRL,      0xE000ED04              /* interrupt control state register */
-.equ    NVIC_SYSPRI2,       0xE000ED20              /* system priority register (2) */
+.equ    NVIC_SYSPRI3,       0xE000ED20              /* system priority register (3) */
 .equ    NVIC_PENDSV_PRI,    0xFFFF0000              /* PendSV and SysTick priority value (lowest) */
 .equ    NVIC_PENDSVSET,     0x10000000              /* value to trigger PendSV exception */
 
@@ -93,7 +97,8 @@ PendSV_Handler:
     /* get rt_thread_switch_interrupt_flag */
     LDR r0, =rt_thread_switch_interrupt_flag
     LDR r1, [r0]
-    CBZ r1, pendsv_exit         /* pendsv already handled */
+    CMP r1, #0x00
+    BEQ pendsv_exit             /* pendsv already handled */
 
     /* clear rt_thread_switch_interrupt_flag to 0 */
     MOV r1, #0x00
@@ -103,7 +108,20 @@ PendSV_Handler:
     LDR r1, [r0]
     CBZ r1, switch_to_thread    /* skip register save at the first time */
 
+#ifdef RT_USING_SYSCALLS
+    AND r12, lr,  #RT_THREAD_LR_MASK
+    LSR r12, r12, #2                /* r12=(lr&0x0C)>>2 */
+    STR r12, [r1, #LR_OFFSET]       /* from_thread->lr = r12 */
+
+    /* 根据lr的第3位判断线程返回后使用PSP还是MSP，*/
+    /* 如果使用PSP 则说明之前运行在用户态 */
+    /* 如果使用MSP 则说明之前运行在内核态 */
+    TST r12, #RT_THREAD_PSP
+    MRSNE r1, psp
+    MRSEQ r1, msp
+#else
     MRS r1, psp                 /* get from thread stack pointer */
+#endif
     
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     TST     lr, #0x10           /* if(!EXC_RETURN[4]) */
@@ -122,12 +140,32 @@ PendSV_Handler:
 #endif
 
     LDR r0, [r0]
+#ifdef RT_USING_SYSCALLS
+    TST r12, #RT_THREAD_PSP
+    STRNE r1, [r0, #USP_OFFSET]            /* from_thread->usp = r1 */
+    STREQ r1, [r0, #KSP_OFFSET]            /* from_thread->ksp = r1 */
+#else
     STR r1, [r0]                /* update from thread stack pointer */
+#endif
 
 switch_to_thread:
-    LDR r1, =rt_interrupt_to_thread
-    LDR r1, [r1]
-    LDR r1, [r1]                /* load thread stack pointer */
+    LDR r0, =rt_interrupt_to_thread
+    LDR r0, [r0]
+#ifdef RT_USING_SYSCALLS
+    LDR  r12, [r0, #LR_OFFSET]      /* r12=to_thread->lr */
+    TST  r12, #RT_THREAD_PSP
+    BEQ  1f
+    LDR  r1, [r0, #KSP_OFFSET]
+    MSR  msp, r1
+    LDR  r1, [r0, #USP_OFFSET]     /* r1 = to_thread->usp */
+    B    2f
+1:  LDR  r1, [r0, #USP_OFFSET]     
+    MSR  psp, r1
+    LDR  r1, [r0, #KSP_OFFSET]     /* r1 = to_thread->ksp */
+2:
+#else
+    LDR r1, [r0]                /* load thread stack pointer */
+#endif
 
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     LDMFD   r1!, {r3}           /* pop flag */
@@ -140,12 +178,34 @@ switch_to_thread:
     VLDMIANE  r1!, {d8 - d15}   /* pop FPU register s16~s31 */
 #endif
 
-    MSR psp, r1                 /* update stack pointer */
 
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     ORR     lr, lr, #0x10       /* lr |=  (1 << 4), clean FPCA. */
     CMP     r3,  #0             /* if(flag_r3 != 0) */
     BICNE   lr, lr, #0x10       /* lr &= ~(1 << 4), set FPCA. */
+#endif
+
+#ifdef RT_USING_SYSCALLS
+    TST r12, #RT_THREAD_PSP
+    MSRNE psp, r1
+    MSREQ msp, r1
+
+    MRS  r3, CONTROL
+    AND  r1, r12, #RT_THREAD_PSP
+    BIC  r3, #0x01
+    ORR  r3, r1
+
+
+    LSL  r1, r12, #2
+    BIC  lr, #RT_THREAD_LR_MASK
+    ORR  lr, r1
+
+    MSR PRIMASK, r2
+    MSR CONTROL, r3
+
+    BX  lr
+#else
+    MSR psp, r1                 /* update stack pointer */
 #endif
 
 pendsv_exit:
@@ -183,7 +243,7 @@ rt_hw_context_switch_to:
     STR     r0, [r1]
 
     /* set the PendSV and SysTick exception priority */
-    LDR r0, =NVIC_SYSPRI2
+    LDR r0, =NVIC_SYSPRI3
     LDR r1, =NVIC_PENDSV_PRI
     LDR.W   r2, [r0,#0x00]       /* read       */
     ORR     r1,r1,r2             /* modify     */

@@ -21,8 +21,8 @@
 #include <rtthread.h>
 
 #ifdef RT_USING_USER_MAIN
-#ifndef RT_MAIN_THREAD_STACK_SIZE
-#define RT_MAIN_THREAD_STACK_SIZE     2048
+#ifndef RT_KERNEL_STACK_SIZE
+#define RT_KERNEL_STACK_SIZE     2048
 #endif
 #ifndef RT_MAIN_THREAD_PRIORITY
 #define RT_MAIN_THREAD_PRIORITY       (RT_THREAD_PRIORITY_MAX / 3)
@@ -165,7 +165,7 @@ int entry(void)
 #ifndef RT_USING_HEAP
 /* if there is not enable heap, we should use static thread and stack. */
 ALIGN(8)
-static rt_uint8_t main_stack[RT_MAIN_THREAD_STACK_SIZE];
+static rt_uint8_t main_stack[RT_KERNEL_STACK_SIZE];
 struct rt_thread main_thread;
 #endif
 
@@ -196,7 +196,7 @@ void rt_application_init(void)
 
 #ifdef RT_USING_HEAP
     tid = rt_thread_create("main", main_thread_entry, RT_NULL,
-                           RT_MAIN_THREAD_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
+                           RT_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
     RT_ASSERT(tid != RT_NULL);
 #else
     rt_err_t result;

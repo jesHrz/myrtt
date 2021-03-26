@@ -575,11 +575,18 @@ struct rt_thread
 
     /* stack point and entry */
     void       *sp;                                     /**< stack point */
+#ifdef RT_USING_SYSCALLS
+    void       *usp;
+    rt_uint32_t lr;
+    void       *user_stack_addr;
+    rt_uint32_t user_stack_size;
+#endif
+
     void       *entry;                                  /**< entry */
     void       *parameter;                              /**< parameter */
     void       *stack_addr;                             /**< stack address */
     rt_uint32_t stack_size;                             /**< stack size */
-
+    
     /* error code */
     rt_err_t    error;                                  /**< error code */
 

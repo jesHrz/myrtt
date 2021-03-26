@@ -119,6 +119,10 @@ void rt_hw_context_switch_to(rt_ubase_t to);
 void rt_hw_context_switch_interrupt(rt_ubase_t from, rt_ubase_t to);
 #endif /*RT_USING_SMP*/
 
+#ifdef RT_USING_SYSCALLS
+rt_ubase_t rt_hw_syscall_dispatch(void *context);
+#endif
+
 void rt_hw_console_output(const char *str);
 
 void rt_hw_backtrace(rt_uint32_t *fp, rt_ubase_t thread_entry);
