@@ -447,9 +447,16 @@ void rt_thread_alloc_sig(rt_thread_t tid)
     int index;
     rt_base_t level;
     rt_sighandler_t *vectors;
+#ifdef RT_USING_SYSCALLS
+    void *sig_stack;
+#endif
 
     vectors = (rt_sighandler_t *)RT_KERNEL_MALLOC(sizeof(rt_sighandler_t) * RT_SIG_MAX);
     RT_ASSERT(vectors != RT_NULL);
+#ifdef RT_USING_SYSCALLS
+    sig_stack = (void *)RT_KERNEL_MALLOC(RT_SIGNAL_STACK_SIZE);
+    RT_ASSERT(sig_stack != RT_NULL);
+#endif
 
     for (index = 0; index < RT_SIG_MAX; index ++)
     {
@@ -458,6 +465,9 @@ void rt_thread_alloc_sig(rt_thread_t tid)
 
     level = rt_hw_interrupt_disable();
     tid->sig_vectors = vectors;
+#ifdef RT_USING_SYSCALLS
+    tid->sig_stack = sig_stack;
+#endif
     rt_hw_interrupt_enable(level);
 }
 
@@ -466,6 +476,9 @@ void rt_thread_free_sig(rt_thread_t tid)
     rt_base_t level;
     struct siginfo_node *si_node;
     rt_sighandler_t *sig_vectors;
+#ifdef RT_USING_SYSCALLS
+    void *sig_stack;
+#endif
 
     level = rt_hw_interrupt_disable();
     si_node = (struct siginfo_node *)tid->si_list;
@@ -473,6 +486,11 @@ void rt_thread_free_sig(rt_thread_t tid)
 
     sig_vectors = tid->sig_vectors;
     tid->sig_vectors = RT_NULL;
+
+#ifdef RT_USING_SYSCALLS
+    sig_stack = tid->sig_stack;
+    tid->sig_stack = RT_NULL;
+#endif
     rt_hw_interrupt_enable(level);
 
     if (si_node)
@@ -495,7 +513,74 @@ void rt_thread_free_sig(rt_thread_t tid)
     {
         RT_KERNEL_FREE(sig_vectors);
     }
+
+#ifdef RT_USING_SYSCALLS
+    if (sig_stack)
+    {
+        RT_KERNEL_FREE(sig_stack);
+    }
+#endif
 }
+
+#ifdef RT_USING_SYSCALLS
+#include <syscalls.h>
+static void _syscall_sigreturn()
+{
+    asm volatile
+    (
+        "mov r8, %1 \n"
+        "svc %0 \n"
+        ::"i"(SYS_syscall), "i"(SYS_sigreturn):
+    );
+}
+
+static int _syscall_handle_sig(rt_thread_t tid, int alloc)
+{
+    int signo;
+    rt_base_t level;
+
+    struct siginfo_node *si_node;
+    rt_sighandler_t handler;
+
+    /* if thread was ready for handling signal */
+    if (tid->sig_ret != RT_NULL)    return 0;
+
+    level = rt_hw_interrupt_disable();
+    /* if thread is not waiting for signal */
+    if ((tid->sig_pending & tid->sig_mask) && !(tid->stat & RT_THREAD_STAT_SIGNAL_WAIT))
+    {
+        si_node = (struct siginfo_node *)tid->si_list;
+        RT_ASSERT(si_node != RT_NULL);
+
+        /* remove this sig info node from list */
+        if (si_node->list.next == RT_NULL)
+            tid->si_list = RT_NULL;
+        else
+            tid->si_list = (void *)rt_slist_entry(si_node->list.next, struct siginfo_node, list);
+
+        signo   = si_node->si.si_signo;
+        handler = tid->sig_vectors[signo];
+
+        LOG_D("handle signal: %d, handler 0x%08x", signo, handler);
+
+        if (handler)
+        {
+            RT_ASSERT(tid->sig_stack != RT_NULL);
+
+            tid->sig_ret = tid->usp;
+            tid->usp = rt_hw_stack_init(handler, (void *)signo, 
+                (void *)((char *)tid->sig_stack + RT_SIGNAL_STACK_SIZE - sizeof(rt_ubase_t)), 
+                _syscall_sigreturn);
+        }
+       
+        tid->sig_pending &= ~sig_mask(signo);
+        rt_mp_free(si_node); /* release this siginfo node */
+    }
+
+    rt_hw_interrupt_enable(level);
+    return 0;
+}
+#endif //RT_USING_SYSCALLS
 
 int rt_thread_kill(rt_thread_t tid, int sig)
 {
@@ -569,9 +654,19 @@ int rt_thread_kill(rt_thread_t tid, int sig)
     }
 
     /* deliver signal to this thread */
-    _signal_deliver(tid);
 
-    return RT_EOK;
+#ifdef RT_USING_SYSCALLS
+    if (tid->user_stack_size > 0)
+    {
+        return _syscall_handle_sig(tid, RT_TRUE);
+    }
+    else
+#endif
+    {
+        _signal_deliver(tid);
+
+        return RT_EOK;
+    }
 }
 
 int rt_system_signal_init(void)
@@ -587,3 +682,92 @@ int rt_system_signal_init(void)
 }
 
 #endif
+
+#ifdef RT_USING_SYSCALLS
+
+int sys_kill(rt_thread_t tid,
+             int         signo)
+{
+#ifdef RT_USING_SIGNALS
+    if (tid == NULL || rt_object_get_type((rt_object_t)tid) != RT_Object_Class_Thread)
+        return -EINVAL;
+
+    if (!sig_valid(signo))
+        return -EINVAL;
+
+    return rt_thread_kill(tid, signo);
+#else
+    return -ENOTSUP;
+#endif
+}
+
+int sys_sigreturn()
+{
+#ifdef RT_USING_SIGNALS
+    int rc = 0;
+    rt_thread_t tid = rt_thread_self();
+
+    if (tid->sig_ret == RT_NULL)
+        return -EINVAL;
+
+    tid->usp = tid->sig_ret;
+    tid->sig_ret = RT_NULL;
+
+    if ((rc = _syscall_handle_sig(tid, RT_FALSE)))
+        tid->sig_ret = RT_NULL;
+
+    return rc;
+#endif
+
+    return 0;
+}
+
+int sys_signal(int             sig,
+               rt_sighandler_t handler)
+{
+#ifdef RT_USING_SIGNALS
+    return (int)rt_signal_install(sig, handler);
+#else
+    return -ENOTSUP;
+#endif
+}
+
+int sys_sigprocmask(int             how,
+                    const sigset_t *set,
+                    sigset_t       *oset)
+{
+#ifdef RT_USING_SIGNALS
+    rt_base_t level;
+    rt_thread_t tid;
+
+    tid = rt_thread_self();
+
+    level = rt_hw_interrupt_disable();
+    if (oset) *oset = tid->sig_mask;
+
+    if (set)
+    {
+        switch(how)
+        {
+        case SIG_UNBLOCK:
+            tid->sig_mask |= *set;
+            break;
+        case SIG_BLOCK:
+            tid->sig_mask &= ~*set;
+            break;
+        case SIG_SETMASK:
+            tid->sig_mask =  *set;
+            break;
+        default:
+            break;
+        }
+    }
+    rt_hw_interrupt_enable(level);
+
+    return 0;
+#else
+    return -ENOTSUP;
+#endif
+}
+
+#endif //RT_USING_SYSCALLS

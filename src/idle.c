@@ -176,6 +176,7 @@ void rt_thread_idle_excute(void)
         rt_list_remove(&(thread->tlist));
         /* release thread's stack */
         RT_KERNEL_FREE(thread->stack_addr);
+
 #ifdef RT_USING_SYSCALLS
         RT_KERNEL_FREE(thread->user_stack_addr);
 #endif

@@ -625,6 +625,11 @@ struct rt_thread
 #endif
     rt_sighandler_t *sig_vectors;                       /**< vectors of signal handler */
     void            *si_list;                           /**< the signal infor list */
+
+#ifdef RT_USING_SYSCALLS
+    void            *sig_stack;
+#endif
+
 #endif
 
     rt_ubase_t  init_tick;                              /**< thread's initialized tick */

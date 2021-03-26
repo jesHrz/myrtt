@@ -237,6 +237,13 @@ config RT_USING_SIGNALS
     help
         A signal is an asynchronous notification sent to a specific thread
         in order to notify it of an event that occurred.
+    
+    if RT_USING_SIGNALS
+        config RT_SIGNAL_STACK_SIZE
+            int "Set signal stack size"
+            default 2048
+            depends on RT_USING_SYSCALLS
+    endif
 endmenu
 
 menu "Memory Management"

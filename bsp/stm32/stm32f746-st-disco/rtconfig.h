@@ -26,6 +26,8 @@
 #define RT_USING_EVENT
 #define RT_USING_MAILBOX
 #define RT_USING_MESSAGEQUEUE
+#define RT_USING_SIGNALS
+#define RT_SIGNAL_STACK_SIZE 2048
 
 /* Memory Management */
 

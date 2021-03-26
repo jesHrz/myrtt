@@ -260,10 +260,10 @@ sys_dlmodule_init (int   *argc,
 #endif
 }
 
-// extern int sys_signal(struct stack_frame *);
-// extern int sys_kill(struct stack_frame *);
-// extern int sys_sigreturn(struct stack_frame *);
-// extern int sys_sigprocmask(struct stack_frame *);
+extern int sys_signal(int, rt_sighandler_t);    // function entry
+extern int sys_kill(int, int);                  // function entry
+extern int sys_sigreturn();                     // function entry
+extern int sys_sigprocmask(int, const sigset_t *, sigset_t *);  // function entry
 
 int
 sys_getpid ()
@@ -314,10 +314,10 @@ void *syscall_table[NR_SYSCALL] = {
     [SYS_calloc]            = (void *)sys_calloc,
     [SYS_free]              = (void *)sys_free,
     [SYS_dlmodule_init]     = (void *)sys_dlmodule_init,
-    // [SYS_signal]            = (void *)sys_signal,
-    // [SYS_kill]              = (void *)sys_kill,
-    // [SYS_sigreturn]         = (void *)sys_sigreturn,
+    [SYS_signal]            = (void *)sys_signal,
+    [SYS_kill]              = (void *)sys_kill,
+    [SYS_sigreturn]         = (void *)sys_sigreturn,
     [SYS_getpid]            = (void *)sys_getpid,
     [SYS_getpidbyname]      = (void *)sys_getpidbyname,
-    // [SYS_sigprocmask]       = (void *)sys_sigprocmask,
+    [SYS_sigprocmask]       = (void *)sys_sigprocmask,
 };
