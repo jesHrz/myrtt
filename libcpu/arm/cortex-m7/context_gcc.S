@@ -16,12 +16,14 @@
  * @addtogroup cortex-m4
  */
 /*@{*/
+
 #include <rtconfig.h>
+
 #ifdef RT_USING_SYSCALLS
 #include <exc_return.h>
 #endif
 
-.cpu cortex-m4
+.cpu cortex-m7
 .syntax unified
 .thumb
 .text

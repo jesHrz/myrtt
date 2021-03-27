@@ -236,6 +236,11 @@ void dlmodule_destroy_subthread(struct rt_dlmodule *module, rt_thread_t thread)
     {
         /* release thread's stack */
         RT_KERNEL_FREE(thread->stack_addr);
+
+#ifdef RT_USING_SYSCALLS
+        RT_KERNEL_FREE(thread->user_stack_addr);
+#endif
+
         /* delete thread object */
         rt_object_delete((rt_object_t)thread);
     }

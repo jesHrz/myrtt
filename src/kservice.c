@@ -125,6 +125,9 @@ RTM_EXPORT(_rt_errno);
  */
 void *rt_memset(void *s, int c, rt_ubase_t count)
 {
+    if (s == RT_NULL)
+        return RT_NULL;
+        
 #ifdef RT_USING_TINY_SIZE
     char *xs = (char *)s;
 

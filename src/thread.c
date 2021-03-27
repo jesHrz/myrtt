@@ -119,6 +119,7 @@ static void _rt_thread_exit(void)
         :
     );
 }
+#endif
 
 static void rt_thread_cleanup(struct rt_thread *tid)
 {
@@ -136,7 +137,6 @@ static void rt_thread_cleanup(struct rt_thread *tid)
             rt_thread_resume(thread);
     }
 }
-#endif
 
 void rt_thread_exit(void)
 {
@@ -220,12 +220,12 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
         thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
                                             (void *)((char *)thread->user_stack_addr),
                                             (void *)_rt_thread_exit);
-        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + sizeof(rt_uint32_t)), 8);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr), 8);
 #else
         thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
                                             (rt_uint8_t *)((char *)thread->user_stack_addr + thread->user_stack_size - sizeof(rt_ubase_t)),
                                             (void *)_rt_thread_exit);
-        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + thread->stack_size + sizeof(rt_uint32_t)), 8);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + thread->stack_size), 8);
 #endif
         thread->lr = RT_THREAD_THREAD_PSP;
     }
@@ -274,11 +274,7 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
 #endif /*RT_USING_SMP*/
 
     /* initialize cleanup function and user data */
-#ifdef RT_USING_SYSCALLS
     thread->cleanup   = rt_thread_cleanup;
-#else
-    thread->cleanup   = 0;
-#endif
     thread->user_data = 0;
 
     /* initialize thread timer */

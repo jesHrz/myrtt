@@ -78,6 +78,51 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
 {
     RT_ASSERT(thread != RT_NULL);
 
+#ifdef RT_USING_SYSCALLS
+    // 开启 RT_USING_MEMHEAP_AS_HEAP 后 rt_malloc 至少给分配 RT_MEMHEAP_MINIALLOC 大小字节的内存
+    // 因此无法通过 user_stack_addr == RT_NULL 来判断应用跑在用户态还是内核态
+    // 可以通过 user_stack_size 来判断
+    if (thread->user_stack_size > 0)
+    {
+    #if defined(RT_USING_SIGNALS)
+        if (thread->sig_ret == RT_NULL)
+        {
+    #endif
+    #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
+        if (*((rt_uint8_t *)((rt_ubase_t)thread->user_stack_addr + thread->user_stack_size - 1)) != '#' ||
+    #else
+        if (*((rt_uint8_t *)thread->user_stack_addr) != '#' ||
+    #endif
+            (rt_ubase_t)thread->usp <= (rt_ubase_t)thread->user_stack_addr ||
+            (rt_ubase_t)thread->usp >
+            (rt_ubase_t)thread->user_stack_addr + (rt_ubase_t)thread->user_stack_size)
+        {
+            rt_ubase_t level;
+
+            rt_kprintf("thread:%s user stack overflow\n", thread->name);
+
+            level = rt_hw_interrupt_disable();
+            while (level);
+        }
+    #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
+        else if ((rt_ubase_t)thread->usp > ((rt_ubase_t)thread->user_stack_addr + thread->user_stack_size))
+        {
+            rt_kprintf("warning: %s user stack is close to the top of stack address.\n",
+                    thread->name);
+        }
+    #else
+        else if ((rt_ubase_t)thread->usp <= ((rt_ubase_t)thread->user_stack_addr + 32))
+        {
+            rt_kprintf("warning: %s user stack is close to end of stack address.\n",
+                    thread->name);
+        }
+    #endif
+    #if defined(RT_USING_SIGNALS)
+        }
+    #endif
+    }
+#endif //RT_USING_SYSCALLS
+
 #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
     if (*((rt_uint8_t *)((rt_ubase_t)thread->stack_addr + thread->stack_size - 1)) != '#' ||
 #else
