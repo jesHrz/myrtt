@@ -126,6 +126,17 @@ rt_err_t rt_thread_init(struct rt_thread *thread,
                         rt_uint32_t       stack_size,
                         rt_uint8_t        priority,
                         rt_uint32_t       tick);
+#ifdef RT_USING_SYSCALLS
+rt_err_t rt_user_thread_init(struct rt_thread *thread,
+                             const char       *name,
+                             void (*entry)(void *parameter),
+                             void             *parameter,
+                             void             *stack_start,
+                             rt_uint32_t       stack_size,
+                             rt_uint8_t        priority,
+                             rt_uint32_t       tick);
+#endif //RT_USING_SYSCALLS
+
 rt_err_t rt_thread_detach(rt_thread_t thread);
 rt_thread_t rt_thread_create(const char *name,
                              void (*entry)(void *parameter),
@@ -133,17 +144,16 @@ rt_thread_t rt_thread_create(const char *name,
                              rt_uint32_t stack_size,
                              rt_uint8_t  priority,
                              rt_uint32_t tick);
+
 #ifdef RT_USING_SYSCALLS
 rt_thread_t rt_user_thread_create(const char *name,
-                             void (*entry)(void *parameter),
-                             void       *parameter,
-                             rt_uint32_t user_stack_size,
-                             rt_uint8_t  priority,
-                             rt_uint32_t tick);
-#define RT_THREAD_CREATE rt_user_thread_create
-#else
-#define RT_THREAD_CREATE rt_thread_create
+                                  void (*entry)(void *parameter),
+                                  void       *parameter,
+                                  rt_uint32_t user_stack_size,
+                                  rt_uint8_t  priority,
+                                  rt_uint32_t tick);
 #endif //RT_USING_SYSCALLS
+
 rt_thread_t rt_thread_self(void);
 rt_thread_t rt_thread_find(char *name);
 rt_err_t rt_thread_startup(rt_thread_t thread);

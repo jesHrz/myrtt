@@ -181,26 +181,55 @@ rt_uint8_t *rt_hw_stack_init(void       *tentry,
 #include <exc_return.h>
 
 
-extern void *syscall_table[];
+extern rt_syscall_struct_t syscall_table[];
 
 rt_ubase_t rt_hw_syscall_dispatch(void *context)
 {
     struct stack_frame *sp = (struct stack_frame *)context;
 
     int rc = -ENOSYS;
-    int sys_nr = sp->r8;
+    rt_syscall_struct_t *sys;
     rt_thread_t tid = rt_thread_self();
 
     // update usp
     tid->usp = context;
 
-    if (sys_nr >= 0 && sys_nr < NR_SYSCALL)
-        rc = ((rt_syscall_func_t)syscall_table[sys_nr])(
-            sp->exception_stack_frame.r0,
-            sp->exception_stack_frame.r1,
-            sp->exception_stack_frame.r2,
-            sp->exception_stack_frame.r3
-        );
+    if (sp->r8 >= 0 && sp->r8 < MAX_SYSCALL)
+    {
+        sys = &syscall_table[sp->r8];
+        switch(svc->argc)
+        {
+        case 0:
+            rc = ((int(*)())svc->entry)();
+            break;
+        case 1:
+            rc = ((int(*)(int))svc->entry)(sp->exception_stack_frame.r0);
+            break;
+        case 2:
+            rc = ((int(*)(int, int))svc->entry)(
+                sp->exception_stack_frame.r0,
+                sp->exception_stack_frame.r1
+            );
+            break;
+        case 3:
+            rc = ((int(*)(int, int, int))svc->entry)(
+                sp->exception_stack_frame.r0,
+                sp->exception_stack_frame.r1,
+                sp->exception_stack_frame.r2
+            );
+            break;
+        case 4:
+            rc = ((int(*)(int, int, int, int))svc->entry)(
+                sp->exception_stack_frame.r0,
+                sp->exception_stack_frame.r1,
+                sp->exception_stack_frame.r2,
+                sp->exception_stack_frame.r3 
+            );
+            break;
+        default:
+            break;
+        }
+    }
 
     tid->lr = RT_THREAD_THREAD_PSP;
     sp->exception_stack_frame.r0 = rc;

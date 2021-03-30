@@ -557,12 +557,11 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
 
 #ifdef RT_USING_SYSCALLS
-            tid = RT_THREAD_CREATE(module->parent.name, (void(*)(void*))module->entry_addr, RT_NULL, 
-                module->stack_size, module->priority, 10);
+            tid = rt_user_thread_create(module->parent.name, (void(*)(void*))module->entry_addr, RT_NULL, 
 #else
-            tid = RT_THREAD_CREATE(module->parent.name, _dlmodule_thread_entry, (void *)module, 
-                module->stack_size, module->priority, 10);
+            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void *)module, 
 #endif
+                module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;

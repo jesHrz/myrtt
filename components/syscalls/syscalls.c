@@ -10,153 +10,42 @@
 #include <dlmodule.h>
 #endif
 
-int
-sys_exit (int rc)
-{
-    dlmodule_exit(rc);
-    return 0;
-}
-
-int
-sys_read (int    fd,
-          void  *buf,
-          size_t len)
-{
-#ifdef RT_USING_DFS
-    return read(fd, buf, len);
-#else
-    return -ENOTSUP;
+#ifdef RT_USING_PTHREAD
+#include <pthread.h>
+#include "pthread.h"
 #endif
-}
 
-int
-sys_write (int          fd,
-           const void  *buf,
-           size_t       nbytes)
+/* ************* syscall service entry ***************** */
+int sys_unimplemented()
 {
-#ifndef RT_USING_DFS
-#ifdef RT_USING_DEVICE
-    if (fileno(stdout) == fd)
-    {
-        rt_device_t console;
-
-        console = rt_console_get_device();
-        if (console) return rt_device_write(console, -1, buf, nbytes);
-    }
-
-    return 0;
-#else
-    /* return "not supported" */
-    return -ENOTSUP;
-#endif /*RT_USING_DEVICE*/
-#else
-    return write(fd, buf, nbytes);
-#endif
-}
-
-int
-sys_lseek (int   fd,
-           off_t offset,
-           int   whence)
-{
-#ifdef RT_USING_DFS
-    return (int)lseek(fd, offset, whence);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_open (const char *name,
-          int         flags,
-          int         mode)
-{
-#ifdef RT_USING_DFS
-    return open(name, flags, mode);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int 
-sys_close (int fd)
-{
-#ifdef RT_USING_DFS
-    return close(fd);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int 
-sys_rename (const char *old,
-            const char *new)
-{
-#ifdef RT_USING_DFS
-    return rename(old, new);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_stat (const char  *name,
-          struct stat *buf)
-{
-#ifdef RT_USING_DFS
-    return stat(name, buf);
-#else
     return -ENOSYS;
-#endif
 }
 
-int 
-sys_fstat (int          file,
-           struct stat *buf)
+void _exit(int rc)
 {
-#ifdef RT_USING_DFS
-    return fstat(file, buf);
-#else
-    return -ENOTSUP;
+#ifdef RT_USING_MODULE
+    rt_thread_t tid = rt_thread_self();
+    struct rt_dlmodule* module = (struct rt_dlmodule*)tid->module_id;
+    if (module != RT_NULL && module->main_thread == tid)
+        dlmodule_exit(module);
+#endif
+    rt_thread_exit();
+}
+
+int _close(int file)
+{
+    if (file >= 0 && file <= 2)
+    {
+        *_rt_errno() = EBADF;
+        return -1;
+    }
+#ifdef RT_USING_POSIX
+    return close(file);
 #endif
 }
 
 int
-sys_fsync (int file)
-{
-#ifdef RT_USING_DFS
-    return fsync(file);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_fcntl (int   file,
-           int   cmd,
-           void *args)
-{
-#ifdef RT_USING_DFS
-    return fcntl(file, cmd, args);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_ioctl (int           file,
-           unsigned long cmd,
-           void         *data)
-{
-#ifdef RT_USING_DFS
-    return ioctl(file, cmd, data);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_nanosleep (const struct timespec *rqtp,
+nanosleep (const struct timespec *rqtp,
                struct timespec       *rmtp)
 {
     rt_tick_t tick;
@@ -176,103 +65,14 @@ sys_nanosleep (const struct timespec *rqtp,
 }
 
 int
-sys_gettimeofday (struct timeval *tp,
-                  struct timeval *tzp)
-{
-    if (tp)
-    {
-        tp->tv_sec = rt_tick_get() / RT_TICK_PER_SECOND;
-        tp->tv_usec = (rt_tick_get() % RT_TICK_PER_SECOND) * (1000000 / RT_TICK_PER_SECOND);
-    }
-
-    return 0;
-}
-
-int
-sys_settimeofday (struct timeval *tp,
+settimeofday (struct timeval *tp,
                   struct timeval *tzp)
 {
     return -ENOSYS;
 }
 
 int
-sys_errno()
-{
-    return (int)_rt_errno();
-}
-
-int
-sys_mkdir (const char *path,
-           int         mode)
-{
-#ifdef RT_USING_DFS
-    return mkdir(path, mode);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_unlink (const char *path)
-{
-#ifdef RT_USING_DFS
-    return unlink(path);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-int
-sys_malloc (size_t size)
-{
-    return (int)rt_malloc(size);
-}
-
-int
-sys_realloc (void  *old,
-             size_t newlen)
-{
-    return (int)rt_realloc(old, newlen);
-}
-
-int
-sys_calloc (size_t size,
-            size_t len)
-{
-    return (int)rt_calloc(size, len);
-}
-
-int
-sys_free (void *addr)
-{
-    rt_free(addr);
-    return 0;
-}
-
-int
-sys_dlmodule_init (int   *argc,
-                   char **argv)
-{
-#ifdef RT_USING_MODULE
-    return dlmodule_init(argc, argv);
-#else
-    return -ENOTSUP;
-#endif
-}
-
-extern int sys_signal(int, rt_sighandler_t);    // function entry
-extern int sys_kill(int, int);                  // function entry
-extern int sys_sigreturn();                     // function entry
-extern int sys_sigprocmask(int, const sigset_t *, sigset_t *);  // function entry
-
-int
-sys_getpid ()
-{
-    return (int)rt_thread_self();
-}
-
-int
-sys_getpidbyname(const char *name)
+getpidbyname(const char *name)
 {
     struct rt_object_information *information;
     struct rt_thread *thread;
@@ -290,34 +90,103 @@ sys_getpidbyname(const char *name)
     return -1;
 }
 
-void *syscall_table[NR_SYSCALL] = {
-    [SYS_exit]              = (void *)sys_exit,
-    [SYS_read]              = (void *)sys_read,
-    [SYS_write]             = (void *)sys_write,
-    [SYS_lseek]             = (void *)sys_lseek,
-    [SYS_open]              = (void *)sys_open,
-    [SYS_close]             = (void *)sys_close,
-    [SYS_rename]            = (void *)sys_rename,
-    [SYS_stat]              = (void *)sys_stat,
-    [SYS_fstat]             = (void *)sys_fstat,
-    [SYS_fsync]             = (void *)sys_fsync,
-    [SYS_fcntl]             = (void *)sys_fcntl,
-    [SYS_ioctl]             = (void *)sys_ioctl,
-    [SYS_nanosleep]         = (void *)sys_nanosleep,
-    [SYS_gettimeofday]      = (void *)sys_gettimeofday,
-    [SYS_settimeofday]      = (void *)sys_settimeofday,
-    [SYS_errno]             = (void *)sys_errno,
-    [SYS_mkdir]             = (void *)sys_mkdir,
-    [SYS_unlink]            = (void *)sys_unlink,
-    [SYS_malloc]            = (void *)sys_malloc,
-    [SYS_realloc]           = (void *)sys_realloc,
-    [SYS_calloc]            = (void *)sys_calloc,
-    [SYS_free]              = (void *)sys_free,
-    [SYS_dlmodule_init]     = (void *)sys_dlmodule_init,
-    [SYS_signal]            = (void *)sys_signal,
-    [SYS_kill]              = (void *)sys_kill,
-    [SYS_sigreturn]         = (void *)sys_sigreturn,
-    [SYS_getpid]            = (void *)sys_getpid,
-    [SYS_getpidbyname]      = (void *)sys_getpidbyname,
-    [SYS_sigprocmask]       = (void *)sys_sigprocmask,
+#undef SYSCALL_VOID_1
+#define SYSCALL_VOID_1(name, service, nr, tp1)\
+RT_WEAK int sys_##name(int arg1)\
+{\
+    service((tp1)arg1);\
+    return 0;\
+}
+
+#undef SYSCALL_0
+#define SYSCALL_0(name, service, nr) \
+RT_WEAK int sys_##name() \
+{\
+    return (int)service();\
+}
+
+#undef SYSCALL_1
+#define SYSCALL_1(name, service, nr, tp1) \
+RT_WEAK int sys_##name(int arg1) \
+{\
+    return (int)service((tp1)arg1);\
+}
+
+#undef SYSCALL_2
+#define SYSCALL_2(name, service, nr, tp1, tp2) \
+RT_WEAK int sys_##name(int arg1, int arg2) \
+{\
+    return (int)service((tp1)arg1, (tp2)arg2);\
+}
+
+#undef SYSCALL_3
+#define SYSCALL_3(name, service, nr, tp1, tp2, tp3) \
+RT_WEAK int sys_##name(int arg1, int arg2, int arg3) \
+{\
+    return (int)service((tp1)arg1, (tp2)arg2, (tp3)arg3);\
+}
+
+#undef SYSCALL_4
+#define SYSCALL_4(name, service, nr, tp1, tp2, tp3, tp4) \
+RT_WEAK int sys_##name(int arg1, int arg2, int arg3, int arg4) \
+{\
+    return (int)service((tp1)arg1, (tp2)arg2, (tp3)arg3, (tp4)arg4);\
+}
+
+#include "syscall_construct.h"
+/* ************* ************************ ***************** */
+
+
+
+rt_syscall_struct_t syscall_table[MAX_SYSCALL] = { 
+    [0 ... (MAX_SYSCALL - 1)] = {0, (void *)&sys_unimplemented}
 };
+
+#undef SYSCALL_VOID_1
+#define SYSCALL_VOID_1(name, service, nr, tp1) SYSCALL_1(name, service, nr, tp1)
+
+#undef SYSCALL_0
+#define SYSCALL_0(name, service, nr) \
+if (add_syscall_entry((void *)&(sys_##name), 0, nr))  \
+    return 1;    
+
+#undef SYSCALL_1
+#define SYSCALL_1(name, service, nr, tp1) \
+if (add_syscall_entry((void *)&(sys_##name), 1, nr))  \
+    return 1;    
+
+#undef SYSCALL_2
+#define SYSCALL_2(name, service, nr, tp1, tp2) \
+if (add_syscall_entry((void *)&(sys_##name), 2, nr))  \
+    return 1;    
+
+#undef SYSCALL_3
+#define SYSCALL_3(name, service, nr, tp1, tp2, tp3) \
+if (add_syscall_entry((void *)&(sys_##name), 3, nr))  \
+    return 1;    
+
+#undef SYSCALL_4
+#define SYSCALL_4(name, service, nr, tp1, tp2, tp3, tp4) \
+if (add_syscall_entry((void *)&(sys_##name), 4, nr))  \
+    return 1;    
+
+static int add_syscall_entry(void *entry, int argc, int nr)
+{
+    if (nr < 0 || nr >= MAX_SYSCALL)
+        return 1;
+
+    if (syscall_table[nr].entry != (void *)&sys_unimplemented)
+        return 1;
+
+    syscall_table[nr].argc  = argc;
+    syscall_table[nr].entry = entry;
+    return 0;
+}
+
+int syscall_init()
+{
+    #include "syscall_construct.h"
+
+    return 0;
+}
+INIT_COMPONENT_EXPORT(syscall_init);

@@ -530,7 +530,7 @@ static void _syscall_sigreturn()
     (
         "mov r8, %1 \n"
         "svc %0 \n"
-        ::"i"(SYS_syscall), "i"(SYS_sigreturn):
+        ::"i"(SYS_syscall), "i"(__NR_sigreturn):
     );
 }
 
@@ -697,7 +697,7 @@ int sys_kill(rt_thread_t tid,
 
     return rt_thread_kill(tid, signo);
 #else
-    return -ENOTSUP;
+    return -ENOSYS;
 #endif
 }
 
@@ -768,6 +768,29 @@ int sys_sigprocmask(int             how,
 #else
     return -ENOTSUP;
 #endif
+}
+
+int 
+sys_sigaction(int signum, 
+              const struct sigaction *act, 
+              struct sigaction *oldact)
+{
+    rt_sighandler_t old = RT_NULL;
+
+    if (!sig_valid(signum)) return -RT_ERROR;
+
+    if (act)
+        old = rt_signal_install(signum, act->sa_handler);
+    else
+    {
+        old = rt_signal_install(signum, RT_NULL);
+        rt_signal_install(signum, old);
+    }
+
+    if (oldact)
+        oldact->sa_handler = old;
+
+    return 0;
 }
 
 #endif //RT_USING_SYSCALLS

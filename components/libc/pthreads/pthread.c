@@ -101,13 +101,24 @@ void _pthread_data_destroy(pthread_t pth)
         if (ptd->joinable_sem != RT_NULL)
             rt_sem_delete(ptd->joinable_sem);
 
+#ifdef RT_USING_SYSCALLS
+        /* release thread resource */
+        if (ptd->attr.stackaddr == RT_NULL && ptd->tid->user_stack_addr != RT_NULL)
+        {
+            /* release thread allocated stack */
+            rt_free(ptd->tid->user_stack_addr);
+        }
+        rt_free(ptd->tid->stack_addr);
+        /* clean stack addr pointer */
+        ptd->tid->user_stack_addr = RT_NULL;
+#else
         /* release thread resource */
         if (ptd->attr.stackaddr == RT_NULL && ptd->tid->stack_addr != RT_NULL)
         {
             /* release thread allocated stack */
             rt_free(ptd->tid->stack_addr);
-        }
-        /* clean stack addr pointer */
+        } 
+#endif
         ptd->tid->stack_addr = RT_NULL;
 
         /*
@@ -264,7 +275,11 @@ int pthread_create(pthread_t            *pid,
     }
 
     /* initial this pthread to system */
+#ifdef RT_USING_SYSCALLS
+    if (rt_user_thread_init(ptd->tid, name, pthread_entry_stub, ptd,
+#else
     if (rt_thread_init(ptd->tid, name, pthread_entry_stub, ptd,
+#endif
                        stack, ptd->attr.stacksize,
                        ptd->attr.schedparam.sched_priority, 5) != RT_EOK)
     {
