@@ -219,6 +219,9 @@ int pthread_create(pthread_t            *pid,
     /* get pthread data */
     ptd = _pthread_get_data(pth_id);
 
+    /* ptd shall be provided */
+    RT_ASSERT(ptd != RT_NULL);
+
     if (attr != RT_NULL)
     {
         ptd->attr = *attr;
@@ -313,6 +316,12 @@ int pthread_detach(pthread_t thread)
 {
     int ret = 0;
     _pthread_data_t *ptd = _pthread_get_data(thread);
+    if (ptd == NULL)
+    {
+        /* invalid ptd */
+        ret = EINVAL;
+        goto __exit;
+    }
 
     rt_enter_critical();
     if (ptd->attr.detachstate == PTHREAD_CREATE_DETACHED)
@@ -374,7 +383,13 @@ int pthread_join(pthread_t thread, void **value_ptr)
     rt_err_t result;
 
     ptd = _pthread_get_data(thread);
-    if (ptd && ptd->tid == rt_thread_self())
+    if (ptd == NULL)
+    {
+        /* invalid ptd */
+        return EINVAL;
+    }
+
+    if (ptd->tid == rt_thread_self())
     {
         /* join self */
         return EDEADLK;
@@ -676,7 +691,10 @@ int pthread_cancel(pthread_t thread)
 
     /* get posix thread data */
     ptd = _pthread_get_data(thread);
-    RT_ASSERT(ptd != RT_NULL);
+    if (ptd == NULL)
+    {
+        return EINVAL;
+    }
 
     /* cancel self */
     if (ptd->tid == rt_thread_self())

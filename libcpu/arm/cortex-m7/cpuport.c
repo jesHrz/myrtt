@@ -197,29 +197,29 @@ rt_ubase_t rt_hw_syscall_dispatch(void *context)
     if (sp->r8 >= 0 && sp->r8 < MAX_SYSCALL)
     {
         sys = &syscall_table[sp->r8];
-        switch(svc->argc)
+        switch(sys->argc)
         {
         case 0:
-            rc = ((int(*)())svc->entry)();
+            rc = ((int(*)())sys->entry)();
             break;
         case 1:
-            rc = ((int(*)(int))svc->entry)(sp->exception_stack_frame.r0);
+            rc = ((int(*)(int))sys->entry)(sp->exception_stack_frame.r0);
             break;
         case 2:
-            rc = ((int(*)(int, int))svc->entry)(
+            rc = ((int(*)(int, int))sys->entry)(
                 sp->exception_stack_frame.r0,
                 sp->exception_stack_frame.r1
             );
             break;
         case 3:
-            rc = ((int(*)(int, int, int))svc->entry)(
+            rc = ((int(*)(int, int, int))sys->entry)(
                 sp->exception_stack_frame.r0,
                 sp->exception_stack_frame.r1,
                 sp->exception_stack_frame.r2
             );
             break;
         case 4:
-            rc = ((int(*)(int, int, int, int))svc->entry)(
+            rc = ((int(*)(int, int, int, int))sys->entry)(
                 sp->exception_stack_frame.r0,
                 sp->exception_stack_frame.r1,
                 sp->exception_stack_frame.r2,
