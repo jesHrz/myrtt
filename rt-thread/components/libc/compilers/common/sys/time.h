@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -32,13 +32,15 @@ extern "C" {
  * Structure returned by gettimeofday(2) system call,
  * and used in other calls.
  */
+#if !(defined(_WIN32))
 struct timeval {
     long    tv_sec;     /* seconds */
     long    tv_usec;    /* and microseconds */
 };
+#endif
 #endif /* _TIMEVAL_DEFINED */
 
-#if !defined __GNUC__ && !defined __ICCARM__
+#if !(defined(__GNUC__) && !defined(__ARMCC_VERSION)) && !defined (__ICCARM__) && !defined (_WIN32)
 struct timespec {
     time_t  tv_sec;     /* seconds */
     long    tv_nsec;    /* and nanoseconds */

@@ -17,7 +17,11 @@
  */
 /*@{*/
 
+#include <rtconfig.h>
+
+#ifdef RT_USING_SYSCALLS
 #include <exc_return.h>
+#endif
 
 .cpu cortex-m7
 .syntax unified
@@ -93,7 +97,6 @@ PendSV_Handler:
     CPSID   I
 
     /* get rt_thread_switch_interrupt_flag */
-    /* 如果 rt_thread_switch_interrupt_flag 在 rt_hw_context_switch_to 中被设置成1，如果是0则表示不用进行上下文切换 */
     LDR r0, =rt_thread_switch_interrupt_flag
     LDR r1, [r0]
     CMP r1, #0x00
@@ -103,13 +106,11 @@ PendSV_Handler:
     MOV r1, #0x00
     STR r1, [r0]
 
-    /* 如果 rt_interrupt_from_thread_ksp = 0 则表示是第一次进行上下文切换，不用保存现场 */
-    /* 此时直接跳转到 switch_to_thread 来恢复现场 */
     LDR r0, =rt_interrupt_from_thread
     LDR r1, [r0]
     CBZ r1, switch_to_thread    /* skip register save at the first time */
 
-    
+#ifdef RT_USING_SYSCALLS
     AND r12, lr,  #RT_THREAD_LR_MASK
     LSR r12, r12, #2                /* r12=(lr&0x0C)>>2 */
     STR r12, [r1, #LR_OFFSET]       /* from_thread->lr = r12 */
@@ -120,7 +121,10 @@ PendSV_Handler:
     TST r12, #RT_THREAD_PSP
     MRSNE r1, psp
     MRSEQ r1, msp
-
+#else
+    MRS r1, psp                 /* get from thread stack pointer */
+#endif
+    
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     TST     lr, #0x10           /* if(!EXC_RETURN[4]) */
     VSTMDBEQ r1!, {d8 - d15}    /* push FPU register s16~s31 */
@@ -138,14 +142,18 @@ PendSV_Handler:
 #endif
 
     LDR r0, [r0]
+#ifdef RT_USING_SYSCALLS
     TST r12, #RT_THREAD_PSP
     STRNE r1, [r0, #USP_OFFSET]            /* from_thread->usp = r1 */
     STREQ r1, [r0, #KSP_OFFSET]            /* from_thread->ksp = r1 */
+#else
+    STR r1, [r0]                /* update from thread stack pointer */
+#endif
 
 switch_to_thread:
-    LDR  r0, =rt_interrupt_to_thread
-    LDR  r0, [r0]
-
+    LDR r0, =rt_interrupt_to_thread
+    LDR r0, [r0]
+#ifdef RT_USING_SYSCALLS
     LDR  r12, [r0, #LR_OFFSET]      /* r12=to_thread->lr */
     TST  r12, #RT_THREAD_PSP
     BEQ  1f
@@ -153,11 +161,14 @@ switch_to_thread:
     MSR  msp, r1
     LDR  r1, [r0, #USP_OFFSET]     /* r1 = to_thread->usp */
     B    2f
-1:
-    LDR  r1, [r0, #USP_OFFSET]     
+1:  LDR  r1, [r0, #USP_OFFSET]     
     MSR  psp, r1
     LDR  r1, [r0, #KSP_OFFSET]     /* r1 = to_thread->ksp */
 2:
+#else
+    LDR r1, [r0]                /* load thread stack pointer */
+#endif
+
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     LDMFD   r1!, {r3}           /* pop flag */
 #endif
@@ -169,12 +180,14 @@ switch_to_thread:
     VLDMIANE  r1!, {d8 - d15}   /* pop FPU register s16~s31 */
 #endif
 
+
 #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     ORR     lr, lr, #0x10       /* lr |=  (1 << 4), clean FPCA. */
     CMP     r3,  #0             /* if(flag_r3 != 0) */
     BICNE   lr, lr, #0x10       /* lr &= ~(1 << 4), set FPCA. */
 #endif
 
+#ifdef RT_USING_SYSCALLS
     TST r12, #RT_THREAD_PSP
     MSRNE psp, r1
     MSREQ msp, r1
@@ -193,10 +206,15 @@ switch_to_thread:
     MSR CONTROL, r3
 
     BX  lr
+#else
+    MSR psp, r1                 /* update stack pointer */
+#endif
 
 pendsv_exit:
+    /* restore interrupt */
     MSR PRIMASK, r2
 
+    ORR lr, lr, #0x04
     BX  lr
 
 /*
@@ -206,7 +224,6 @@ pendsv_exit:
 .global rt_hw_context_switch_to
 .type rt_hw_context_switch_to, %function
 rt_hw_context_switch_to:
-/* rt_interrupt_to_thread 存放了要切换到的线程的栈帧结构的地址 */
     LDR r1, =rt_interrupt_to_thread
     STR r0, [r1]
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -211,7 +211,6 @@ int sdram_test(void)
     /* write data */
     LOG_D("Writing the %ld bytes data, waiting....", SDRAM_SIZE);
     start_time = rt_tick_get();
-    int tmp = 1;
     for (i = 0; i < SDRAM_SIZE / data_width; i++)
     {
 #if SDRAM_DATA_WIDTH == 8
@@ -221,11 +220,6 @@ int sdram_test(void)
 #else
         *(__IO uint32_t *)(SDRAM_BANK_ADDR + i * data_width) = (uint32_t)(i % 1000);
 #endif
-        if (*(short *)SDRAM_BANK_ADDR != 0 && tmp == 1)
-        {
-            rt_kprintf("%d %d 0x%08x\n", i, *(short *)SDRAM_BANK_ADDR, SDRAM_BANK_ADDR + i * data_width);
-            tmp = 0;
-        }
     }
     time_cast = rt_tick_get() - start_time;
     LOG_D("Write data success, total time: %d.%03dS.", time_cast / RT_TICK_PER_SECOND,
@@ -237,22 +231,21 @@ int sdram_test(void)
     {
 #if SDRAM_DATA_WIDTH == 8
         data = *(__IO uint8_t *)(SDRAM_BANK_ADDR + i * data_width);
-        if (data != (i % 100))
+        if (data != (uint8_t)(i % 100))
         {
             LOG_E("SDRAM test failed!");
             break;
         }
 #elif SDRAM_DATA_WIDTH == 16
         data = *(__IO uint16_t *)(SDRAM_BANK_ADDR + i * data_width);
-        if (data != (i % 1000))
+        if (data != (uint16_t)(i % 1000))
         {
-            rt_kprintf("addr=0x%08x\ndata=%d\ti=%d\n", SDRAM_BANK_ADDR + i * data_width, data, i);
             LOG_E("SDRAM test failed!");
             break;
         }
 #else
         data = *(__IO uint32_t *)(SDRAM_BANK_ADDR + i * data_width);
-        if (data != (i % 1000))
+        if (data != (uint32_t)(i % 1000))
         {
             LOG_E("SDRAM test failed!");
             break;

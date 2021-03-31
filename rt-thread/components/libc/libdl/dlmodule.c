@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -138,9 +138,38 @@ static void _dlmodule_exit(void)
     return;
 }
 
-void dlmodule_cleanup(void)
+static void _dlmodule_thread_entry(void* parameter)
 {
+    int argc = 0;
+    char *argv[RT_MODULE_ARG_MAX];
+
+    struct rt_dlmodule *module = (struct rt_dlmodule*)parameter;
+
+    if (module == RT_NULL || module->cmd_line == RT_NULL)
+        /* malloc for module_cmd_line failed. */
+        return;
+
+    if (module->cmd_line)
+    {
+        rt_memset(argv, 0x00, sizeof(argv));
+        argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
+        if (argc == 0) goto __exit;
+    }
+
+    /* set status of module */
+    module->stat = RT_DLMODULE_STAT_RUNNING;
+
+    LOG_D("run main entry: 0x%p with %s",
+        module->entry_addr,
+        module->cmd_line);
+
+    if (module->entry_addr)
+        module->entry_addr(argc, argv);
+
+__exit:
     _dlmodule_exit();
+
+    return ;
 }
 
 struct rt_dlmodule *dlmodule_create(void)
@@ -153,8 +182,13 @@ struct rt_dlmodule *dlmodule_create(void)
         module->stat = RT_DLMODULE_STAT_INIT;
 
         /* set initial priority and stack size */
+#ifdef RT_USING_SYSCALLS
         module->priority = 20;
-        module->stack_size = RT_MAIN_THREAD_USER_STACK_SIZE;
+        module->stack_size = RT_USER_STACK_SIZE;
+#else
+        module->priority = RT_THREAD_PRIORITY_MAX - 1;
+        module->stack_size = 2048;
+#endif
 
         rt_list_init(&(module->object_list));
     }
@@ -201,8 +235,12 @@ void dlmodule_destroy_subthread(struct rt_dlmodule *module, rt_thread_t thread)
     else
     {
         /* release thread's stack */
+        RT_KERNEL_FREE(thread->stack_addr);
+
+#ifdef RT_USING_SYSCALLS
         RT_KERNEL_FREE(thread->user_stack_addr);
-        RT_KERNEL_FREE(thread->kernel_stack_addr);
+#endif
+
         /* delete thread object */
         rt_object_delete((rt_object_t)thread);
     }
@@ -518,8 +556,12 @@ struct rt_dlmodule* dlmodule_exec(const char* pgname, const char* cmd, int cmd_s
             /* check stack size and priority */
             if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
 
-            tid = rt_thread_create(module->parent.name, module->entry_addr, RT_NULL,
-                   module->stack_size, module->stack_size, module->priority, 10);
+#ifdef RT_USING_SYSCALLS
+            tid = rt_user_thread_create(module->parent.name, (void(*)(void*))module->entry_addr, RT_NULL, 
+#else
+            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void *)module, 
+#endif
+                module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
@@ -696,8 +738,8 @@ struct rt_dlmodule* dlmodule_exec_custom(const char* pgname, const char* cmd, in
             if (module->priority > RT_THREAD_PRIORITY_MAX) module->priority = RT_THREAD_PRIORITY_MAX - 1;
             if (module->stack_size < 2048 || module->stack_size > (1024 * 32)) module->stack_size = 2048;
 
-            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module, 
-                0, module->stack_size, module->priority, 10);
+            tid = rt_thread_create(module->parent.name, _dlmodule_thread_entry, (void*)module,
+                module->stack_size, module->priority, 10);
             if (tid)
             {
                 tid->module_id = module;
@@ -718,30 +760,6 @@ struct rt_dlmodule* dlmodule_exec_custom(const char* pgname, const char* cmd, in
 }
 #endif
 
-int dlmodule_init(int *argc, char *argv[])
-{
-    struct rt_dlmodule *module = (struct rt_dlmodule *)dlmodule_self();
-
-    if (module == RT_NULL || module->cmd_line == RT_NULL)
-        /* malloc for module_cmd_line failed. */
-        return RT_ERROR;
-
-    if (module->cmd_line)
-    {
-        *argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
-        if (*argc == 0) return RT_ERROR;
-    }
-
-    /* set status of module */
-    module->stat = RT_DLMODULE_STAT_RUNNING;
-
-    LOG_D("run main entry: 0x%p with %s",
-        module->entry_addr,
-        module->cmd_line);
-    
-    return RT_EOK;
-}
-
 void dlmodule_exit(int ret_code)
 {
     rt_thread_t thread;
@@ -754,7 +772,7 @@ void dlmodule_exit(int ret_code)
     rt_enter_critical();
 
     /* module is not running */
-    if (module->stat != RT_DLMODULE_STAT_RUNNING) 
+    if (module->stat != RT_DLMODULE_STAT_RUNNING)
     {
         /* restore scheduling */
         rt_exit_critical();
@@ -783,6 +801,32 @@ void dlmodule_exit(int ret_code)
     /* enable scheduling */
     rt_exit_critical();
 }
+
+#ifdef RT_USING_SYSCALLS
+int dlmodule_init(int *argc, char *argv[])
+{
+    struct rt_dlmodule *module = (struct rt_dlmodule *)dlmodule_self();
+
+    if (module == RT_NULL || module->cmd_line == RT_NULL)
+        /* malloc for module_cmd_line failed. */
+        return RT_ERROR;
+
+    if (module->cmd_line)
+    {
+        *argc = _rt_module_split_arg((char *)module->cmd_line, rt_strlen(module->cmd_line), argv);
+        if (*argc == 0) return RT_ERROR;
+    }
+
+    /* set status of module */
+    module->stat = RT_DLMODULE_STAT_RUNNING;
+
+    LOG_D("run main entry: 0x%p with %s",
+        module->entry_addr,
+        module->cmd_line);
+    
+    return RT_EOK;
+}
+#endif
 
 rt_uint32_t dlmodule_symbol_find(const char *sym_str)
 {
@@ -855,7 +899,6 @@ int list_symbols(void)
          index != _rt_module_symtab_end;
          index ++)
     {
-        if (strcmp(index->name, "printf") == 0)
         rt_kprintf("%s => 0x%08x\n", index->name, index->addr);
     }
 

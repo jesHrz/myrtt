@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -122,20 +122,38 @@ rt_err_t rt_thread_init(struct rt_thread *thread,
                         const char       *name,
                         void (*entry)(void *parameter),
                         void             *parameter,
-                        void             *user_stack_start,
-                        rt_uint32_t       user_stack_size,
-                        void             *kernel_stack_start,
-                        rt_uint32_t       kernel_stack_size,
+                        void             *stack_start,
+                        rt_uint32_t       stack_size,
                         rt_uint8_t        priority,
                         rt_uint32_t       tick);
+#ifdef RT_USING_SYSCALLS
+rt_err_t rt_user_thread_init(struct rt_thread *thread,
+                             const char       *name,
+                             void (*entry)(void *parameter),
+                             void             *parameter,
+                             void             *stack_start,
+                             rt_uint32_t       stack_size,
+                             rt_uint8_t        priority,
+                             rt_uint32_t       tick);
+#endif //RT_USING_SYSCALLS
+
 rt_err_t rt_thread_detach(rt_thread_t thread);
 rt_thread_t rt_thread_create(const char *name,
                              void (*entry)(void *parameter),
                              void       *parameter,
-                             rt_uint32_t user_stack_size,
-                             rt_uint32_t kernel_stack_size,
+                             rt_uint32_t stack_size,
                              rt_uint8_t  priority,
                              rt_uint32_t tick);
+
+#ifdef RT_USING_SYSCALLS
+rt_thread_t rt_user_thread_create(const char *name,
+                                  void (*entry)(void *parameter),
+                                  void       *parameter,
+                                  rt_uint32_t user_stack_size,
+                                  rt_uint8_t  priority,
+                                  rt_uint32_t tick);
+#endif //RT_USING_SYSCALLS
+
 rt_thread_t rt_thread_self(void);
 rt_thread_t rt_thread_find(char *name);
 rt_err_t rt_thread_startup(rt_thread_t thread);
@@ -439,8 +457,6 @@ rt_err_t rt_device_unregister(rt_device_t dev);
 
 rt_device_t rt_device_create(int type, int attach_size);
 void rt_device_destroy(rt_device_t device);
-
-rt_err_t rt_device_init_all(void);
 
 rt_err_t
 rt_device_set_rx_indicate(rt_device_t dev,

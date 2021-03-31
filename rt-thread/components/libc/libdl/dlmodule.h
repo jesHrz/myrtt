@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -23,7 +23,7 @@ typedef void* rt_addr_t;
 
 typedef void (*rt_dlmodule_init_func_t)(struct rt_dlmodule *module);
 typedef void (*rt_dlmodule_cleanup_func_t)(struct rt_dlmodule *module);
-typedef void  (*rt_dlmodule_entry_func_t)(void *);
+typedef int  (*rt_dlmodule_entry_func_t)(int argc, char** argv);
 
 struct rt_dlmodule
 {

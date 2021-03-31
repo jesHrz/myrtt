@@ -15,7 +15,7 @@
 #define RT_USING_HOOK
 #define RT_USING_IDLE_HOOK
 #define RT_IDLE_HOOK_LIST_SIZE 4
-#define IDLE_THREAD_STACK_SIZE 1024
+#define IDLE_THREAD_STACK_SIZE 512
 #define RT_DEBUG
 #define RT_DEBUG_COLOR
 
@@ -27,6 +27,7 @@
 #define RT_USING_MAILBOX
 #define RT_USING_MESSAGEQUEUE
 #define RT_USING_SIGNALS
+#define RT_SIGNAL_STACK_SIZE 2048
 
 /* Memory Management */
 
@@ -51,8 +52,7 @@
 
 #define RT_USING_COMPONENTS_INIT
 #define RT_USING_USER_MAIN
-#define RT_MAIN_THREAD_KERNEL_STACK_SIZE 2048
-#define RT_MAIN_THREAD_USER_STACK_SIZE 32768
+#define RT_KERNEL_STACK_SIZE 4096
 #define RT_MAIN_THREAD_PRIORITY 10
 
 /* Command shell */
@@ -116,8 +116,12 @@
 /* POSIX layer and C standard library */
 
 #define RT_USING_LIBC
+#define RT_USING_PTHREADS
+#define PTHREAD_NUM_MAX 8
 #define RT_USING_POSIX
 #define RT_USING_MODULE
+#define RT_USING_SYSCALLS
+#define RT_USER_STACK_SIZE 8192
 
 /* RT-Thread online packages */
 

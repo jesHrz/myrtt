@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -31,7 +31,10 @@
 
 #include <rthw.h>
 #include <rtthread.h>
-#include <syscall.h>
+
+#ifdef RT_USING_SYSCALLS
+#include <exc_return.h>
+#endif
 
 extern rt_list_t rt_thread_defunct;
 
@@ -104,6 +107,23 @@ static void _thread_cleanup_execute(rt_thread_t thread)
     rt_hw_interrupt_enable(level);
 }
 
+static void rt_thread_cleanup(struct rt_thread *tid)
+{
+    struct rt_object_information *information;
+    struct rt_thread *thread;
+    rt_list_t *p;
+
+    information = rt_object_get_information(RT_Object_Class_Thread);
+    RT_ASSERT(information != RT_NULL);
+
+    for (p = information->object_list.next; p != &information->object_list; p = p->next)
+    {
+        thread = rt_container_of(p, struct rt_thread, list);
+        if (thread != tid && thread->joined_tid == tid)
+            rt_thread_resume(thread);
+    }
+}
+
 void rt_thread_exit(void)
 {
     struct rt_thread *thread;
@@ -142,43 +162,31 @@ void rt_thread_exit(void)
     rt_hw_interrupt_enable(level);
 }
 
-static void _rt_thread_exit(void)
+#ifdef RT_USING_SYSCALLS
+#include <syscalls.h>
+static void _user_thread_exit()
 {
     __asm__ __volatile__
     (
         "mov r8, %0\n"
         "svc %1\n"
         :
-        :"i"(SYS_exit), "i"(SYS_syscall)
+        :"i"(__NR_exit), "i"(SYS_syscall)
         :
     );
 }
-
-static void rt_thread_cleanup(struct rt_thread *tid)
-{
-    struct rt_object_information *information;
-    struct rt_thread *thread;
-    rt_list_t *p;
-
-    information = rt_object_get_information(RT_Object_Class_Thread);
-    RT_ASSERT(information != RT_NULL);
-
-    for (p = information->object_list.next; p != &information->object_list; p = p->next)
-    {
-        thread = rt_container_of(p, struct rt_thread, list);
-        if (thread != tid && thread->joined_tid == tid)
-            rt_thread_resume(thread);
-    }
-}
+#endif
 
 static rt_err_t _rt_thread_init(struct rt_thread *thread,
                                 const char       *name,
                                 void (*entry)(void *parameter),
                                 void             *parameter,
-                                void             *user_stack_start,
-                                rt_uint32_t       user_stack_size,
-                                void             *kernel_stack_start,
-                                rt_uint32_t       kernel_stack_size,
+                                void             *stack_start,
+                                rt_uint32_t       stack_size,
+#ifdef RT_USING_SYSCALLS
+                                void       *user_stack_start,
+                                rt_uint32_t user_stack_size,
+#endif
                                 rt_uint8_t        priority,
                                 rt_uint32_t       tick)
 {
@@ -188,50 +196,54 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     thread->entry = (void *)entry;
     thread->parameter = parameter;
 
-    /* user stack init */
+    /* stack init */
+    thread->stack_addr = stack_start;
+    thread->stack_size = stack_size;
+
+    /* init thread stack */
+    rt_memset(thread->stack_addr, '#', thread->stack_size);
+
+#ifdef RT_USING_SYSCALLS
     thread->user_stack_addr = user_stack_start;
     thread->user_stack_size = user_stack_size;
-
-    /* kernel stack init */
-    thread->kernel_stack_addr = kernel_stack_start;
-    thread->kernel_stack_size = kernel_stack_size;
-
-
-    /* init thread user stack */
     rt_memset(thread->user_stack_addr, '#', thread->user_stack_size);
-    /* init thread kernel stack */
-    rt_memset(thread->kernel_stack_addr, '#', thread->kernel_stack_size);
 
-    /* 如果 user_stack 是空，那么线程将运行在内核态 */
-    if (thread->user_stack_addr == RT_NULL || thread->user_stack_size == 0)
-    {
-        thread->usp = RT_NULL;
-#ifdef ARCH_CPU_STACK_GROWS_UPWARD
-        thread->ksp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
-                                            (void *)((char *)thread->kernel_stack_addr),
-                                            (void *)rt_thread_exit);
-#else
-        thread->ksp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
-                                            (rt_uint8_t *)((char *)thread->kernel_stack_addr + thread->kernel_stack_size - sizeof(rt_ubase_t)),
-                                            (void *)rt_thread_exit);
+    // 线程默认运行在内核态
+    thread->usp = RT_NULL;
+    thread->lr = RT_THREAD_THREAD_MSP;
 #endif
-        thread->lr = RT_THREAD_THREAD_MSP;
-    }
-    else
+
+#ifdef RT_USING_SYSCALLS
+    /* 线程运行在用户态 */
+    if (!(thread->user_stack_addr == RT_NULL || thread->user_stack_size == 0))
     {
 #ifdef ARCH_CPU_STACK_GROWS_UPWARD
         thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
                                             (void *)((char *)thread->user_stack_addr),
-                                            (void *)_rt_thread_exit);
-        thread->ksp = thread->kernel_stack_addr;
+                                            (void *)_user_thread_exit);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr), 8);
 #else
         thread->usp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
                                             (rt_uint8_t *)((char *)thread->user_stack_addr + thread->user_stack_size - sizeof(rt_ubase_t)),
-                                            (void *)_rt_thread_exit);
-        thread->ksp = thread->kernel_stack_addr + thread->kernel_stack_size;
+                                            (void *)_user_thread_exit);
+        thread->sp = (void *)RT_ALIGN_DOWN((rt_uint32_t)(thread->stack_addr + thread->stack_size), 8);
 #endif
         thread->lr = RT_THREAD_THREAD_PSP;
     }
+    else /* 如果 user_stack 是空，那么线程将运行在内核态 */
+#endif //RT_USING_SYSCALLS
+    {
+#ifdef ARCH_CPU_STACK_GROWS_UPWARD
+        thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (void *)((char *)thread->stack_addr),
+                                            (void *)rt_thread_exit);
+#else
+        thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
+                                            (rt_uint8_t *)((char *)thread->stack_addr + thread->stack_size - sizeof(rt_ubase_t)),
+                                            (void *)rt_thread_exit);
+#endif
+    }
+
     /* priority init */
     RT_ASSERT(priority < RT_THREAD_PRIORITY_MAX);
     thread->init_priority    = priority;
@@ -309,31 +321,29 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
  * @param name the name of thread, which shall be unique
  * @param entry the entry function of thread
  * @param parameter the parameter of thread enter function
- * @param user_stack_start the start address of thread user stack
- * @param user_stack_size the size of thread user stack
- * @param kernel_stack_start the start address of thread kernel stack
- * @param kernel_stack_kernel the size of thread kernel stack
+ * @param stack_start the start address of thread stack
+ * @param stack_size the size of thread stack
  * @param priority the priority of thread
  * @param tick the time slice if there are same priority thread
  *
  * @return the operation status, RT_EOK on OK, -RT_ERROR on error
  */
-rt_err_t rt_thread_init(struct rt_thread *thread,
-                        const char       *name,
-                        void (*entry)(void *parameter),
-                        void             *parameter,
-                        void             *user_stack_start,
-                        rt_uint32_t       user_stack_size,
-                        void             *kernel_stack_start,
-                        rt_uint32_t       kernel_stack_size,
-                        rt_uint8_t        priority,
-                        rt_uint32_t       tick)
+static rt_err_t _thread_init(struct rt_thread    *thread,
+                                const char       *name,
+                                void (*entry)(void *parameter),
+                                void             *parameter,
+                                void             *stack_start,
+                                rt_uint32_t       stack_size,
+                #ifdef RT_USING_SYSCALLS
+                                void             *user_stack_start,
+                                rt_uint32_t       user_stack_size,
+                #endif
+                                rt_uint8_t        priority,
+                                rt_uint32_t       tick)
 {
     /* thread check */
     RT_ASSERT(thread != RT_NULL);
-    /* user_stack can be empty */
-    RT_ASSERT(user_stack_size == 0 || user_stack_start != RT_NULL);
-    RT_ASSERT(kernel_stack_start != RT_NULL);
+    RT_ASSERT(stack_start != RT_NULL);
 
     /* initialize thread object */
     rt_object_init((rt_object_t)thread, RT_Object_Class_Thread, name);
@@ -342,14 +352,65 @@ rt_err_t rt_thread_init(struct rt_thread *thread,
                            name,
                            entry,
                            parameter,
+                           stack_start,
+                           stack_size,
+#ifdef RT_USING_SYSCALLS
                            user_stack_start,
                            user_stack_size,
-                           kernel_stack_start,
-                           kernel_stack_size,
+#endif
                            priority,
                            tick);
 }
+
+rt_err_t rt_thread_init(struct rt_thread *thread,
+                        const char       *name,
+                        void (*entry)(void *parameter),
+                        void             *parameter,
+                        void             *stack_start,
+                        rt_uint32_t       stack_size,
+                        rt_uint8_t        priority,
+                        rt_uint32_t       tick)
+{
+    return _thread_init(thread,
+                        name,
+                        entry,
+                        parameter,
+                        stack_start,
+                        stack_size,
+#ifdef RT_USING_SYSCALLS
+                        RT_NULL,
+                        0,
+#endif
+                        priority,
+                        tick);
+}
 RTM_EXPORT(rt_thread_init);
+
+#ifdef RT_USING_SYSCALLS
+rt_err_t rt_user_thread_init(struct rt_thread *thread,
+                        const char       *name,
+                        void (*entry)(void *parameter),
+                        void             *parameter,
+                        void             *stack_start,
+                        rt_uint32_t       stack_size,
+                        rt_uint8_t        priority,
+                        rt_uint32_t       tick)
+{
+    void *kernel_stack_start = (void *)RT_KERNEL_MALLOC(RT_KERNEL_STACK_SIZE);
+    RT_ASSERT(kernel_stack_start != RT_NULL);
+    return _thread_init(thread,
+                        name,
+                        entry,
+                        parameter,
+                        kernel_stack_start,
+                        RT_KERNEL_STACK_SIZE,
+                        stack_start,
+                        stack_size,
+                        priority,
+                        tick);
+}
+RTM_EXPORT(rt_user_thread_init);
+#endif
 
 /**
  * This function will return self thread object
@@ -469,55 +530,96 @@ RTM_EXPORT(rt_thread_detach);
  *
  * @return the created thread object
  */
-rt_thread_t rt_thread_create(const char *name,
+static rt_thread_t _rt_thread_create(const char *name,
                              void (*entry)(void *parameter),
                              void       *parameter,
+                             rt_uint32_t stack_size,
+#ifdef RT_USING_SYSCALLS
                              rt_uint32_t user_stack_size,
-                             rt_uint32_t kernel_stack_size,
+#endif
                              rt_uint8_t  priority,
                              rt_uint32_t tick)
 {
     struct rt_thread *thread;
+    void *stack_start;
+#ifdef RT_USING_SYSCALLS
     void *user_stack_start;
-    void *kernel_stack_start;
+#endif
 
     thread = (struct rt_thread *)rt_object_allocate(RT_Object_Class_Thread,
                                                     name);
     if (thread == RT_NULL)
         return RT_NULL;
 
+    stack_start = (void *)RT_KERNEL_MALLOC(stack_size);
+    if (stack_start == RT_NULL)
+    {
+        /* allocate stack failure */
+        rt_object_delete((rt_object_t)thread);
+
+        return RT_NULL;
+    }
+
+#ifdef RT_USING_SYSCALLS
     user_stack_start = (void *)RT_KERNEL_MALLOC(user_stack_size);
-    if (user_stack_size > 0 && user_stack_start == RT_NULL)
+    if (user_stack_size > 0 && user_stack_start == RT_NULL) 
     {
-        /* allocate user stack failure */
+        /* allocate stack failure */
         rt_object_delete((rt_object_t)thread);
 
         return RT_NULL;
     }
-
-    kernel_stack_start = (void *)RT_KERNEL_MALLOC(kernel_stack_size);
-    if (kernel_stack_start == RT_NULL)
-    {
-        /* allocate kernel stack failure */
-        rt_object_delete((rt_object_t)thread);
-
-        return RT_NULL;
-    }
+#endif
 
     _rt_thread_init(thread,
                     name,
                     entry,
                     parameter,
+                    stack_start,
+                    stack_size,
+#ifdef RT_USING_SYSCALLS
                     user_stack_start,
                     user_stack_size,
-                    kernel_stack_start,
-                    kernel_stack_size,
+#endif
                     priority,
                     tick);
 
     return thread;
 }
+
+rt_thread_t rt_thread_create(const char *name,
+                            void (*entry)(void*),
+                            void  *parameter,
+                            rt_uint32_t stack_size,
+                            rt_uint8_t  priority,
+                            rt_uint32_t tick)
+{
+    return _rt_thread_create(name, 
+                            entry, parameter,
+                            stack_size,
+                        #ifdef RT_USING_SYSCALLS
+                            0,
+                        #endif
+                            priority, tick);
+}
 RTM_EXPORT(rt_thread_create);
+
+#ifdef RT_USING_SYSCALLS
+rt_thread_t rt_user_thread_create(const char *name,
+                                void (*entry)(void *),
+                                void  *parameter,
+                                rt_uint32_t user_stack_size,
+                                rt_uint8_t  priority,
+                                rt_uint32_t tick)
+{
+    return _rt_thread_create(name, 
+                            entry, parameter, 
+                            RT_KERNEL_STACK_SIZE, 
+                            user_stack_size, 
+                            priority, tick);
+}
+RTM_EXPORT(rt_user_thread_create);
+#endif
 
 /**
  * This function will delete a thread. The thread object will be removed from
@@ -654,6 +756,7 @@ rt_err_t rt_thread_delay_until(rt_tick_t *tick, rt_tick_t inc_tick)
 {
     register rt_base_t level;
     struct rt_thread *thread;
+    rt_tick_t cur_tick;
 
     RT_ASSERT(tick != RT_NULL);
 
@@ -665,15 +768,19 @@ rt_err_t rt_thread_delay_until(rt_tick_t *tick, rt_tick_t inc_tick)
     /* disable interrupt */
     level = rt_hw_interrupt_disable();
 
-    if (rt_tick_get() - *tick < inc_tick)
+    cur_tick = rt_tick_get();
+    if (cur_tick - *tick < inc_tick)
     {
-        *tick = *tick + inc_tick - rt_tick_get();
+        rt_tick_t left_tick;
+
+        *tick += inc_tick;
+        left_tick = *tick - cur_tick;
 
         /* suspend thread */
         rt_thread_suspend(thread);
 
         /* reset the timeout of thread timer and start it */
-        rt_timer_control(&(thread->thread_timer), RT_TIMER_CTRL_SET_TIME, tick);
+        rt_timer_control(&(thread->thread_timer), RT_TIMER_CTRL_SET_TIME, &left_tick);
         rt_timer_start(&(thread->thread_timer));
 
         /* enable interrupt */
@@ -689,11 +796,9 @@ rt_err_t rt_thread_delay_until(rt_tick_t *tick, rt_tick_t inc_tick)
     }
     else
     {
+        *tick = cur_tick;
         rt_hw_interrupt_enable(level);
     }
-
-    /* get the wakeup tick */
-    *tick = rt_tick_get();
 
     return RT_EOK;
 }
@@ -1004,5 +1109,6 @@ rt_err_t rt_thread_join(rt_thread_t joined)
 
     return RT_EOK;
 }
+RTM_EXPORT(rt_thread_join);
 
 /**@}*/

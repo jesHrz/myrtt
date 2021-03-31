@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -175,8 +175,11 @@ void rt_thread_idle_excute(void)
         /* remove defunct thread */
         rt_list_remove(&(thread->tlist));
         /* release thread's stack */
+        RT_KERNEL_FREE(thread->stack_addr);
+
+#ifdef RT_USING_SYSCALLS
         RT_KERNEL_FREE(thread->user_stack_addr);
-        RT_KERNEL_FREE(thread->kernel_stack_addr);
+#endif
         /* delete thread object */
         rt_object_delete((rt_object_t)thread);
         rt_hw_interrupt_enable(lock);
@@ -212,7 +215,7 @@ static void rt_thread_idle_entry(void *parameter)
 #endif
 
         rt_thread_idle_excute();
-#ifdef RT_USING_PM        
+#ifdef RT_USING_PM
         rt_system_power_manager();
 #endif
     }
@@ -237,10 +240,6 @@ void rt_thread_idle_init(void)
                 tidle_name,
                 rt_thread_idle_entry,
                 RT_NULL,
-                /* user stack */
-                RT_NULL,
-                0,
-                /* kernel stack */
                 &rt_thread_stack[i][0],
                 sizeof(rt_thread_stack[i]),
                 RT_THREAD_PRIORITY_MAX - 1,

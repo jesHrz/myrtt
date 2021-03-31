@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -12,18 +12,23 @@
  * 2021-02-08     Meco Man     add settimeofday() stime()
  * 2021-02-10     Meco Man     add ctime_r() and re-implement ctime()
  * 2021-02-11     Meco Man     fix bug #3183 - align days[] and months[] to 4 bytes
- *                             add difftime()
  * 2021-02-12     Meco Man     add errno
  * 2012-12-08     Bernard      <clock_time.c> fix the issue of _timevalue.tv_usec initialization,
  *                             which found by Rob <rdent@iinet.net.au>
  * 2021-02-12     Meco Man     move all of the functions located in <clock_time.c> to this file
+ * 2021-03-15     Meco Man     fixed bug: https://club.rt-thread.org/ask/question/423650.html
  */
 
 #include <sys/time.h>
 #include <rtthread.h>
+
 #ifdef RT_USING_DEVICE
 #include <rtdevice.h>
 #endif
+
+#define DBG_TAG    "TIME"
+#define DBG_LVL    DBG_INFO
+#include <rtdbg.h>
 
 /* seconds per day */
 #define SPD 24*60*60
@@ -153,13 +158,14 @@ char* asctime_r(const struct tm *t, char *buf)
     num2str(buf + 20, (t->tm_year + 1900) / 100);
     num2str(buf + 22, (t->tm_year + 1900) % 100);
     buf[24] = '\n';
+    buf[25] = '\0';
     return buf;
 }
 RTM_EXPORT(asctime_r);
 
 char* asctime(const struct tm *timeptr)
 {
-    static char buf[25];
+    static char buf[26];
     return asctime_r(timeptr, buf);
 }
 RTM_EXPORT(asctime);
@@ -177,18 +183,12 @@ char* ctime(const time_t *tim_p)
 }
 RTM_EXPORT(ctime);
 
-double difftime (time_t tim1, time_t tim2)
-{
-    return (double)(tim1 - tim2);
-}
-RTM_EXPORT(difftime);
-
 /**
  * Returns the current time.
  *
  * @param time_t * t the timestamp pointer, if not used, keep NULL.
  *
- * @return The value ((time_t)-1) is returned if the calendar time is not available. 
+ * @return The value ((time_t)-1) is returned if the calendar time is not available.
  *         If timer is not a NULL pointer, the return value is also stored in timer.
  *
  */
@@ -224,6 +224,7 @@ RT_WEAK time_t time(time_t *t)
 
     if(time_now == (time_t)-1)
     {
+        LOG_W("Cannot find a RTC device to provide time!");
         errno = ENOSYS;
     }
 
@@ -251,12 +252,13 @@ int stime(const time_t *t)
     }
     else
     {
+        LOG_W("Cannot find a RTC device to provide time!");
         errno = ENOSYS;
         return -1;
     }
     return 0;
-
 #else
+    LOG_W("Cannot find a RTC device to provide time!");
     errno = ENOSYS;
     return -1;
 #endif /* RT_USING_RTC */
@@ -371,6 +373,10 @@ int settimeofday(const struct timeval *tv, const struct timezone *tz)
     }
 }
 RTM_EXPORT(settimeofday);
+
+/* inherent in the toolchain */
+RTM_EXPORT(difftime);
+RTM_EXPORT(strftime);
 
 #ifdef RT_USING_POSIX
 static struct timeval _timevalue;

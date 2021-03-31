@@ -1,0 +1,14 @@
+config RT_USING_SYSCALLS
+    bool "Using system call layer"
+    select RT_USING_DFS
+    select RT_USING_LIBC
+    depends on ARCH_ARM_CORTEX_M7 && RT_USING_HEAP
+    default n
+    help
+        The system call layer supply syscalls from RT-Thread to support image seperation.
+    
+    if RT_USING_SYSCALLS
+        config RT_USER_STACK_SIZE
+            int "Set thread user stack size"
+            default 8192
+    endif

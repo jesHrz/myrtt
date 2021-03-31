@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -41,19 +41,9 @@
 
 /* include rtconfig header to import configuration */
 #include <rtconfig.h>
-#include <exc_return.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if               /* ARMCC */ (  (defined ( __CC_ARM ) && defined ( __TARGET_FPU_VFP ))    \
-                  /* Clang */ || (defined ( __CLANG_ARM ) && defined ( __VFP_FP__ ) && !defined(__SOFTFP__)) \
-                  /* IAR */   || (defined ( __ICCARM__ ) && defined ( __ARMVFP__ ))        \
-                  /* GNU */   || (defined ( __GNUC__ ) && defined ( __VFP_FP__ ) && !defined(__SOFTFP__)) )
-#define USE_FPU   1
-#else
-#define USE_FPU   0
 #endif
 
 /**
@@ -203,17 +193,15 @@ typedef rt_base_t                       rt_off_t;       /**< Type for offset */
     #define rt_inline                   static inline
     #define RTT_API
 #elif defined (__TASKING__)
-
     #include <stdarg.h>
-    #define RT_SECTION(x)
-    #define RT_UNUSED
-    #define RT_USED
+    #define RT_SECTION(x)               __attribute__((section(x)))
+    #define RT_UNUSED                   __attribute__((unused))
+    #define RT_USED                     __attribute__((used, protect))
     #define PRAGMA(x)                   _Pragma(#x)
-    #define ALIGN(n)
-    #define RT_WEAK
+    #define ALIGN(n)                    __attribute__((__align(n)))
+    #define RT_WEAK                     __attribute__((weak))
     #define rt_inline                   static inline
     #define RTT_API
-
 #else
     #error not supported tool chain
 #endif
@@ -553,7 +541,6 @@ typedef siginfo_t rt_siginfo_t;
 #define RT_SCHEDULE_IPI                 0
 #endif
 
-
 /**
  * CPUs definitions
  *
@@ -579,8 +566,6 @@ struct rt_cpu
 
 #endif
 
-#define RT_THREAD_STRUCT_OFFSET(obj) &((obj)->usp)
-
 /**
  * Thread structure
  */
@@ -596,33 +581,26 @@ struct rt_thread
 #endif
 
     rt_list_t   list;                                   /**< the object list */
-
-    void       *usp;                                    /**< user stack point */
-    void       *ksp;                                    /**< kernel stack point */
-    void       *user_stack_addr;                        /**< user stack address */
-    void       *kernel_stack_addr;                      /**< kernel stack address */
-    rt_uint32_t lr;                                     /**< 00 - Handler-mode & MSP
-                                                             01 - Handler-mode & PSP
-                                                             10 - Thread-mode  & MSP
-                                                             11 - Thread-mode  & PSP */
-    // rt_uint32_t privilege;                              /**< 0 unprivileged 1 privileged */
-    // rt_uint32_t mode;                                   /**< 0 handler-mode 1 thread-mode */
-
     rt_list_t   tlist;                                  /**< the thread list */
 
     /* stack point and entry */
+    void       *sp;                                     /**< stack point */
+#ifdef RT_USING_SYSCALLS
+    void       *usp;
+    rt_uint32_t lr;
+    void       *user_stack_addr;
+    rt_uint32_t user_stack_size;
+#endif
+
     void       *entry;                                  /**< entry */
     void       *parameter;                              /**< parameter */
-
-    rt_uint32_t user_stack_size;                        /**< user stack size */
-    rt_uint32_t kernel_stack_size;                      /**< kernel stack size */
-
+    void       *stack_addr;                             /**< stack address */
+    rt_uint32_t stack_size;                             /**< stack size */
+    
     /* error code */
     rt_err_t    error;                                  /**< error code */
 
     rt_uint8_t  stat;                                   /**< thread status */
-
-    struct rt_thread *joined_tid;                             /**< wait until one thread exit */
 
 #ifdef RT_USING_SMP
     rt_uint8_t  bind_cpu;                               /**< thread is bind to cpu */
@@ -657,7 +635,11 @@ struct rt_thread
 #endif
     rt_sighandler_t *sig_vectors;                       /**< vectors of signal handler */
     void            *si_list;                           /**< the signal infor list */
-    void            *sig_stack;                         /**< stack for signal handler */
+
+#ifdef RT_USING_SYSCALLS
+    void            *sig_stack;
+#endif
+
 #endif
 
     rt_ubase_t  init_tick;                              /**< thread's initialized tick */
@@ -666,6 +648,7 @@ struct rt_thread
     struct rt_timer thread_timer;                       /**< built-in thread timer */
 
     void (*cleanup)(struct rt_thread *tid);             /**< cleanup function when thread exit */
+    struct rt_thread *joined_tid;
 
     /* light weight process if present */
 #ifdef RT_USING_LWP
@@ -677,114 +660,6 @@ struct rt_thread
 typedef struct rt_thread *rt_thread_t;
 
 /**@}*/
-
-
-/**
- * Exception stack frame structure 
- *
- */
-struct exception_stack_frame
-{
-    rt_uint32_t r0;
-    rt_uint32_t r1;
-    rt_uint32_t r2;
-    rt_uint32_t r3;
-    rt_uint32_t r12;
-    rt_uint32_t lr;
-    rt_uint32_t pc;
-    rt_uint32_t psr;
-};
-
-struct stack_frame
-{
-#if USE_FPU
-    rt_uint32_t flag;
-#endif /* USE_FPU */
-
-    /* r4 ~ r11 register */
-    rt_uint32_t r4;
-    rt_uint32_t r5;
-    rt_uint32_t r6;
-    rt_uint32_t r7;
-    rt_uint32_t r8;
-    rt_uint32_t r9;
-    rt_uint32_t r10;
-    rt_uint32_t r11;
-
-    struct exception_stack_frame exception_stack_frame;
-};
-
-struct exception_stack_frame_fpu
-{
-    rt_uint32_t r0;
-    rt_uint32_t r1;
-    rt_uint32_t r2;
-    rt_uint32_t r3;
-    rt_uint32_t r12;
-    rt_uint32_t lr;
-    rt_uint32_t pc;
-    rt_uint32_t psr;
-
-#if USE_FPU
-    /* FPU register */
-    rt_uint32_t S0;
-    rt_uint32_t S1;
-    rt_uint32_t S2;
-    rt_uint32_t S3;
-    rt_uint32_t S4;
-    rt_uint32_t S5;
-    rt_uint32_t S6;
-    rt_uint32_t S7;
-    rt_uint32_t S8;
-    rt_uint32_t S9;
-    rt_uint32_t S10;
-    rt_uint32_t S11;
-    rt_uint32_t S12;
-    rt_uint32_t S13;
-    rt_uint32_t S14;
-    rt_uint32_t S15;
-    rt_uint32_t FPSCR;
-    rt_uint32_t NO_NAME;
-#endif
-};
-
-struct stack_frame_fpu
-{
-    rt_uint32_t flag;
-
-    /* r4 ~ r11 register */
-    rt_uint32_t r4;
-    rt_uint32_t r5;
-    rt_uint32_t r6;
-    rt_uint32_t r7;
-    rt_uint32_t r8;
-    rt_uint32_t r9;
-    rt_uint32_t r10;
-    rt_uint32_t r11;
-
-#if USE_FPU
-    /* FPU register s16 ~ s31 */
-    rt_uint32_t s16;
-    rt_uint32_t s17;
-    rt_uint32_t s18;
-    rt_uint32_t s19;
-    rt_uint32_t s20;
-    rt_uint32_t s21;
-    rt_uint32_t s22;
-    rt_uint32_t s23;
-    rt_uint32_t s24;
-    rt_uint32_t s25;
-    rt_uint32_t s26;
-    rt_uint32_t s27;
-    rt_uint32_t s28;
-    rt_uint32_t s29;
-    rt_uint32_t s30;
-    rt_uint32_t s31;
-#endif
-
-    struct exception_stack_frame_fpu exception_stack_frame;
-};
-/**@{*/
 
 /**
  * @addtogroup IPC
@@ -938,6 +813,9 @@ struct rt_memheap_item
 
     struct rt_memheap_item *next_free;                  /**< next free memheap item */
     struct rt_memheap_item *prev_free;                  /**< prev free memheap item */
+#ifdef RT_USING_MEMTRACE
+    rt_uint8_t              owner_thread_name[4];       /**< owner thread name */
+#endif
 };
 
 /**
@@ -1177,6 +1055,10 @@ struct rt_device_blk_sectors
 #define RTGRAPHIC_CTRL_GET_INFO         3
 #define RTGRAPHIC_CTRL_SET_MODE         4
 #define RTGRAPHIC_CTRL_GET_EXT          5
+#define RTGRAPHIC_CTRL_SET_BRIGHTNESS   6
+#define RTGRAPHIC_CTRL_GET_BRIGHTNESS   7
+#define RTGRAPHIC_CTRL_GET_MODE         8
+#define RTGRAPHIC_CTRL_GET_STATUS       9
 
 /* graphic deice */
 enum
@@ -1193,9 +1075,7 @@ enum
     RTGRAPHIC_PIXEL_FORMAT_RGB888,
     RTGRAPHIC_PIXEL_FORMAT_ARGB888,
     RTGRAPHIC_PIXEL_FORMAT_ABGR888,
-    RTGRAPHIC_PIXEL_FORMAT_ARGB565,
-    RTGRAPHIC_PIXEL_FORMAT_ALPHA,
-    RTGRAPHIC_PIXEL_FORMAT_COLOR,
+    RTGRAPHIC_PIXEL_FORMAT_RESERVED,
 };
 
 /**
@@ -1210,7 +1090,7 @@ struct rt_device_graphic_info
 {
     rt_uint8_t  pixel_format;                           /**< graphic format */
     rt_uint8_t  bits_per_pixel;                         /**< bits per pixel */
-    rt_uint16_t reserved;                               /**< reserved field */
+    rt_uint16_t pitch;                                  /**< bytes per line */
 
     rt_uint16_t width;                                  /**< width of graphic device */
     rt_uint16_t height;                                 /**< height of graphic device */

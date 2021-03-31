@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -21,8 +21,8 @@
 #include <rtthread.h>
 
 #ifdef RT_USING_USER_MAIN
-#ifndef RT_MAIN_THREAD_STACK_SIZE
-#define RT_MAIN_THREAD_STACK_SIZE     2048
+#ifndef RT_KERNEL_STACK_SIZE
+#define RT_KERNEL_STACK_SIZE     2048
 #endif
 #ifndef RT_MAIN_THREAD_PRIORITY
 #define RT_MAIN_THREAD_PRIORITY       (RT_THREAD_PRIORITY_MAX / 3)
@@ -165,8 +165,7 @@ int entry(void)
 #ifndef RT_USING_HEAP
 /* if there is not enable heap, we should use static thread and stack. */
 ALIGN(8)
-static rt_uint8_t main_user_stack[RT_MAIN_THREAD_USER_STACK_SIZE];
-static rt_uint8_t main_kernel_stack[RT_MAIN_THREAD_KERNEL_STACK_SIZE];
+static rt_uint8_t main_stack[RT_KERNEL_STACK_SIZE];
 struct rt_thread main_thread;
 #endif
 
@@ -188,17 +187,15 @@ void rt_application_init(void)
     rt_thread_t tid;
 
 #ifdef RT_USING_HEAP
-    tid = rt_thread_create("kmain", main_thread_entry, RT_NULL,
-                           0, RT_MAIN_THREAD_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
+    tid = rt_thread_create("main", main_thread_entry, RT_NULL,
+                           RT_KERNEL_STACK_SIZE, RT_MAIN_THREAD_PRIORITY, 20);
     RT_ASSERT(tid != RT_NULL);
 #else
     rt_err_t result;
 
     tid = &main_thread;
     result = rt_thread_init(tid, "main", main_thread_entry, RT_NULL,
-                            main_user_stack, sizeof(main_user_stack), 
-                            main_kernel_stack, sizeof(main_kernel_stack), 
-                            RT_MAIN_THREAD_PRIORITY, 20);
+                            main_stack, sizeof(main_stack), RT_MAIN_THREAD_PRIORITY, 20);
     RT_ASSERT(result == RT_EOK);
 
     /* if not define RT_USING_HEAP, using to eliminate the warning */

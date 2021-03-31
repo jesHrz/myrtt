@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -102,13 +102,24 @@ void _pthread_data_destroy(pthread_t pth)
         if (ptd->joinable_sem != RT_NULL)
             rt_sem_delete(ptd->joinable_sem);
 
+#ifdef RT_USING_SYSCALLS
+        /* release thread resource */
+        if (ptd->attr.stackaddr == RT_NULL && ptd->tid->user_stack_addr != RT_NULL)
+        {
+            /* release thread allocated stack */
+            rt_free(ptd->tid->user_stack_addr);
+        }
+        rt_free(ptd->tid->stack_addr);
+        /* clean stack addr pointer */
+        ptd->tid->user_stack_addr = RT_NULL;
+#else
         /* release thread resource */
         if (ptd->attr.stackaddr == RT_NULL && ptd->tid->stack_addr != RT_NULL)
         {
             /* release thread allocated stack */
             rt_free(ptd->tid->stack_addr);
-        }
-        /* clean stack addr pointer */
+        } 
+#endif
         ptd->tid->stack_addr = RT_NULL;
 
         /*
@@ -201,13 +212,16 @@ int pthread_create(pthread_t            *pid,
 
     /* allocate posix thread data */
     pth_id = _pthread_data_create();
-    if (pth_id == PTHREAD_NUM_MAX) 
+    if (pth_id == PTHREAD_NUM_MAX)
     {
         ret = ENOMEM;
         goto __exit;
     }
     /* get pthread data */
     ptd = _pthread_get_data(pth_id);
+
+    /* ptd shall be provided */
+    RT_ASSERT(ptd != RT_NULL);
 
     if (attr != RT_NULL)
     {
@@ -265,7 +279,11 @@ int pthread_create(pthread_t            *pid,
     }
 
     /* initial this pthread to system */
+#ifdef RT_USING_SYSCALLS
+    if (rt_user_thread_init(ptd->tid, name, pthread_entry_stub, ptd,
+#else
     if (rt_thread_init(ptd->tid, name, pthread_entry_stub, ptd,
+#endif
                        stack, ptd->attr.stacksize,
                        ptd->attr.schedparam.sched_priority, 5) != RT_EOK)
     {
@@ -299,6 +317,12 @@ int pthread_detach(pthread_t thread)
 {
     int ret = 0;
     _pthread_data_t *ptd = _pthread_get_data(thread);
+    if (ptd == NULL)
+    {
+        /* invalid ptd */
+        ret = EINVAL;
+        goto __exit;
+    }
 
     rt_enter_critical();
     if (ptd->attr.detachstate == PTHREAD_CREATE_DETACHED)
@@ -360,7 +384,13 @@ int pthread_join(pthread_t thread, void **value_ptr)
     rt_err_t result;
 
     ptd = _pthread_get_data(thread);
-    if (ptd && ptd->tid == rt_thread_self())
+    if (ptd == NULL)
+    {
+        /* invalid ptd */
+        return EINVAL;
+    }
+
+    if (ptd->tid == rt_thread_self())
     {
         /* join self */
         return EDEADLK;
@@ -662,7 +692,10 @@ int pthread_cancel(pthread_t thread)
 
     /* get posix thread data */
     ptd = _pthread_get_data(thread);
-    RT_ASSERT(ptd != RT_NULL);
+    if (ptd == NULL)
+    {
+        return EINVAL;
+    }
 
     /* cancel self */
     if (ptd->tid == rt_thread_self())

@@ -17,14 +17,14 @@ config RT_USING_ARCH_DATA_TYPE
 
         Please re-define these data types in rtconfig_project.h file.
 
-# config RT_USING_SMP
-#     bool "Enable SMP(Symmetric multiprocessing)"
-#     default n
-#     help
-#         This option should be selected by machines which have an SMP-
-#         capable CPU.
-#         The only effect of this option is to make the SMP-related
-#         options available to the user for configuration.
+config RT_USING_SMP
+    bool "Enable SMP(Symmetric multiprocessing)"
+    default n
+    help
+        This option should be selected by machines which have an SMP-
+        capable CPU.
+        The only effect of this option is to make the SMP-related
+        options available to the user for configuration.
 
 config RT_CPUS_NR
     int "Number of CPUs"
@@ -96,7 +96,7 @@ config RT_USING_IDLE_HOOK
 
 config IDLE_THREAD_STACK_SIZE
     int "The stack size of idle thread"
-    default 1024
+    default 256
 
 config RT_USING_TIMER_SOFT
     bool "Enable software timer with a timer thread"
@@ -237,6 +237,13 @@ config RT_USING_SIGNALS
     help
         A signal is an asynchronous notification sent to a specific thread
         in order to notify it of an event that occurred.
+    
+    if RT_USING_SIGNALS
+        config RT_SIGNAL_STACK_SIZE
+            int "Set signal stack size"
+            default 2048
+            depends on RT_USING_SYSCALLS
+    endif
 endmenu
 
 menu "Memory Management"
@@ -284,21 +291,19 @@ menu "Memory Management"
 
     endchoice
 
-    if RT_USING_SMALL_MEM
-        config RT_USING_MEMTRACE
-            bool "Enable memory trace"
-            default n
-            help
-                When enable RT_USING_MEMTRACE with shell, developer can call cmd:
-                1. memtrace
-                   to dump memory block information.
-                2. memcheck
-                   to check memory block to avoid memory overwritten.
+    config RT_USING_MEMTRACE
+        bool "Enable memory trace"
+        default n
+        help
+            When enable RT_USING_MEMTRACE with shell, developer can call cmd:
+            1. memtrace
+                to dump memory block information.
+            2. memcheck
+                to check memory block to avoid memory overwritten.
 
-                And developer also can call memcheck() in each of scheduling
-                to check memory block to find which thread has wrongly modified
-                memory.
-    endif
+            And developer also can call memcheck() in each of scheduling
+            to check memory block to find which thread has wrongly modified
+            memory.
 
     config RT_USING_HEAP
         bool

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -153,7 +153,7 @@ int rt_rtc_ntp_sync_init(void)
         return 0;
     }
 
-    thread = rt_thread_create("ntp_sync", ntp_sync_thread_enrty, RT_NULL, 0, 1536, 26, 2);
+    thread = rt_thread_create("ntp_sync", ntp_sync_thread_enrty, RT_NULL, 1536, 26, 2);
     if (thread)
     {
         rt_thread_startup(thread);
@@ -164,7 +164,7 @@ int rt_rtc_ntp_sync_init(void)
     }
 
     init_ok = RT_TRUE;
-		
+
     return RT_EOK;
 }
 INIT_COMPONENT_EXPORT(rt_rtc_ntp_sync_init);

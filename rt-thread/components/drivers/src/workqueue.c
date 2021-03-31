@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -222,7 +222,7 @@ struct rt_workqueue *rt_workqueue_create(const char *name, rt_uint16_t stack_siz
         rt_sem_init(&(queue->sem), "wqueue", 0, RT_IPC_FLAG_FIFO);
 
         /* create the work thread */
-        queue->work_thread = rt_thread_create(name, _workqueue_thread_entry, queue, 0, stack_size, priority, 10);
+        queue->work_thread = rt_thread_create(name, _workqueue_thread_entry, queue, stack_size, priority, 10);
         if (queue->work_thread == RT_NULL)
         {
             RT_KERNEL_FREE(queue);

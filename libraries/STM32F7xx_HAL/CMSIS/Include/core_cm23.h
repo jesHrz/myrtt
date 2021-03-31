@@ -1261,7 +1261,7 @@ typedef struct
   #include CMSIS_NVIC_VIRTUAL_HEADER_FILE
 #else
 /*#define NVIC_SetPriorityGrouping    __NVIC_SetPriorityGrouping   not available for Cortex-M23 */
-/*#define NVIC_GetPriorityGrouping       not available for Cortex-M23 */
+/*#define NVIC_GetPriorityGrouping    __NVIC_GetPriorityGrouping   not available for Cortex-M23 */
   #define NVIC_EnableIRQ              __NVIC_EnableIRQ
   #define NVIC_GetEnableIRQ           __NVIC_GetEnableIRQ
   #define NVIC_DisableIRQ             __NVIC_DisableIRQ
@@ -1316,7 +1316,7 @@ typedef struct
 #define _IP_IDX(IRQn)            (   (((uint32_t)(int32_t)(IRQn))                >>    2UL)      )
 
 #define __NVIC_SetPriorityGrouping(X) (void)(X)
-#define ()  (0U)
+#define __NVIC_GetPriorityGrouping()  (0U)
 
 /**
   \brief   Enable Interrupt

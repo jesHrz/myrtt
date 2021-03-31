@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -14,8 +14,8 @@
 /* parameters for sdram peripheral */
 /* Bank1 or Bank2 */
 #define SDRAM_TARGET_BANK               1
-/* stm32f7 Bank1:0X60000000  Bank2:0X70000000 */
-#define SDRAM_BANK_ADDR                 ((uint32_t)0x60000000)
+/* stm32f7 Bank1:0XC0000000  Bank2:0XD0000000 */
+#define SDRAM_BANK_ADDR                 ((uint32_t)0X60000000)
 /* data width: 8, 16, 32 */
 #define SDRAM_DATA_WIDTH                16
 /* column bit numbers: 8, 9, 10, 11 */

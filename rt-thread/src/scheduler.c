@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -78,6 +78,7 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
 {
     RT_ASSERT(thread != RT_NULL);
 
+#ifdef RT_USING_SYSCALLS
     // 开启 RT_USING_MEMHEAP_AS_HEAP 后 rt_malloc 至少给分配 RT_MEMHEAP_MINIALLOC 大小字节的内存
     // 因此无法通过 user_stack_addr == RT_NULL 来判断应用跑在用户态还是内核态
     // 可以通过 user_stack_size 来判断
@@ -120,33 +121,34 @@ static void _rt_scheduler_stack_check(struct rt_thread *thread)
         }
     #endif
     }
+#endif //RT_USING_SYSCALLS
 
 #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
-    if (*((rt_uint8_t *)((rt_ubase_t)thread->kernel_stack_addr + thread->kernel_stack_size - 1)) != '#' ||
+    if (*((rt_uint8_t *)((rt_ubase_t)thread->stack_addr + thread->stack_size - 1)) != '#' ||
 #else
-    if (*((rt_uint8_t *)thread->kernel_stack_addr) != '#' ||
+    if (*((rt_uint8_t *)thread->stack_addr) != '#' ||
 #endif
-        (rt_ubase_t)thread->ksp <= (rt_ubase_t)thread->kernel_stack_addr ||
-        (rt_ubase_t)thread->ksp >
-        (rt_ubase_t)thread->kernel_stack_addr + (rt_ubase_t)thread->kernel_stack_size)
+        (rt_ubase_t)thread->sp <= (rt_ubase_t)thread->stack_addr ||
+        (rt_ubase_t)thread->sp >
+        (rt_ubase_t)thread->stack_addr + (rt_ubase_t)thread->stack_size)
     {
         rt_ubase_t level;
 
-        rt_kprintf("thread:%s kernel stack overflow\n", thread->name);
+        rt_kprintf("thread:%s stack overflow\n", thread->name);
 
         level = rt_hw_interrupt_disable();
         while (level);
     }
 #if defined(ARCH_CPU_STACK_GROWS_UPWARD)
-    else if ((rt_ubase_t)thread->ksp > ((rt_ubase_t)thread->kernel_stack_addr + thread->kernel_stack_size))
+    else if ((rt_ubase_t)thread->sp > ((rt_ubase_t)thread->stack_addr + thread->stack_size))
     {
-        rt_kprintf("warning: %s kernel stack is close to the top of stack address.\n",
+        rt_kprintf("warning: %s stack is close to the top of stack address.\n",
                    thread->name);
     }
 #else
-    else if ((rt_ubase_t)thread->ksp <= ((rt_ubase_t)thread->kernel_stack_addr + 32))
+    else if ((rt_ubase_t)thread->sp <= ((rt_ubase_t)thread->stack_addr + 32))
     {
-        rt_kprintf("warning: %s kernel stack is close to end of stack address.\n",
+        rt_kprintf("warning: %s stack is close to end of stack address.\n",
                    thread->name);
     }
 #endif
@@ -279,7 +281,7 @@ void rt_system_scheduler_init(void)
  */
 void rt_system_scheduler_start(void)
 {
-    struct rt_thread *to_thread;
+    register struct rt_thread *to_thread;
     rt_ubase_t highest_ready_priority;
 
     to_thread = _get_highest_priority_thread(&highest_ready_priority);
@@ -295,9 +297,9 @@ void rt_system_scheduler_start(void)
 
     /* switch to new thread */
 #ifdef RT_USING_SMP
-    rt_hw_context_switch_to((rt_ubase_t)&to_thread, to_thread);
+    rt_hw_context_switch_to((rt_ubase_t)&to_thread->sp, to_thread);
 #else
-    rt_hw_context_switch_to((rt_ubase_t)RT_THREAD_STRUCT_OFFSET(to_thread));
+    rt_hw_context_switch_to((rt_ubase_t)&to_thread->sp);
 #endif /*RT_USING_SMP*/
 
     /* never come back */
@@ -313,10 +315,10 @@ void rt_system_scheduler_start(void)
 #ifdef RT_USING_SMP
 /**
  * This function will handle IPI interrupt and do a scheduling in system;
- * 
+ *
  * @param vector, the number of IPI interrupt for system scheduling
  * @param param, use RT_NULL
- * 
+ *
  * NOTE: this function should be invoke or register as ISR in BSP.
  */
 void rt_scheduler_ipi_handler(int vector, void *param)
@@ -326,7 +328,7 @@ void rt_scheduler_ipi_handler(int vector, void *param)
 
 /**
  * This function will perform one scheduling. It will select one thread
- * with the highest priority level in global ready queue or local ready queue, 
+ * with the highest priority level in global ready queue or local ready queue,
  * then switch to it.
  */
 void rt_schedule(void)
@@ -402,18 +404,18 @@ void rt_schedule(void)
                 /* switch to new thread */
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER,
                         ("[%d]switch to priority#%d "
-                         "thread:%.*s(usp:0x%08x | ksp:0x%08x), "
-                         "from thread:%.*s(sp: 0x%08x | ksp:0x%08x)\n",
+                         "thread:%.*s(sp:0x%08x), "
+                         "from thread:%.*s(sp: 0x%08x)\n",
                          pcpu->irq_nest, highest_ready_priority,
-                         RT_NAME_MAX, to_thread->name, to_thread->spm to_thread->ksp,
-                         RT_NAME_MAX, current_thread->name, current_thread->usp, current_thread->ksp));
+                         RT_NAME_MAX, to_thread->name, to_thread->sp,
+                         RT_NAME_MAX, current_thread->name, current_thread->sp));
 
 #ifdef RT_USING_OVERFLOW_CHECK
                 _rt_scheduler_stack_check(to_thread);
 #endif
 
-                rt_hw_context_switch((rt_ubase_t)&current_thread,
-                        (rt_ubase_t)&to_thread, to_thread);
+                rt_hw_context_switch((rt_ubase_t)&current_thread->sp,
+                        (rt_ubase_t)&to_thread->sp, to_thread);
             }
         }
     }
@@ -507,11 +509,11 @@ void rt_schedule(void)
                 /* switch to new thread */
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER,
                         ("[%d]switch to priority#%d "
-                         "thread:%.*s(usp:0x%08x | ksp:0x%08x), "
-                         "from thread:%.*s(usp: 0x%08x | ksp:0x%08x)\n",
+                         "thread:%.*s(sp:0x%08x), "
+                         "from thread:%.*s(sp: 0x%08x)\n",
                          rt_interrupt_nest, highest_ready_priority,
-                         RT_NAME_MAX, to_thread->name, to_thread->usp, to_thread->ksp,
-                         RT_NAME_MAX, from_thread->name, from_thread->usp, from_thread->ksp));
+                         RT_NAME_MAX, to_thread->name, to_thread->sp,
+                         RT_NAME_MAX, from_thread->name, from_thread->sp));
 
 #ifdef RT_USING_OVERFLOW_CHECK
                 _rt_scheduler_stack_check(to_thread);
@@ -521,8 +523,8 @@ void rt_schedule(void)
                 {
                     extern void rt_thread_handle_sig(rt_bool_t clean_state);
 
-                    rt_hw_context_switch((rt_ubase_t)RT_THREAD_STRUCT_OFFSET(from_thread), 
-                                         (rt_ubase_t)RT_THREAD_STRUCT_OFFSET(to_thread));
+                    rt_hw_context_switch((rt_ubase_t)&from_thread->sp,
+                            (rt_ubase_t)&to_thread->sp);
 
                     /* enable interrupt */
                     rt_hw_interrupt_enable(level);
@@ -551,8 +553,9 @@ void rt_schedule(void)
                 else
                 {
                     RT_DEBUG_LOG(RT_DEBUG_SCHEDULER, ("switch in interrupt\n"));
-                    rt_hw_context_switch_interrupt((rt_ubase_t)RT_THREAD_STRUCT_OFFSET(from_thread), 
-                                                   (rt_ubase_t)RT_THREAD_STRUCT_OFFSET(to_thread));
+
+                    rt_hw_context_switch_interrupt((rt_ubase_t)&from_thread->sp,
+                            (rt_ubase_t)&to_thread->sp);
                 }
             }
             else
@@ -656,8 +659,8 @@ void rt_scheduler_do_irq_switch(void *context)
                 current_thread->cpus_lock_nest--;
                 current_thread->scheduler_lock_nest--;
 
-                rt_hw_context_switch_interrupt(context, (rt_ubase_t)&current_thread,
-                        (rt_ubase_t)&to_thread, to_thread);
+                rt_hw_context_switch_interrupt(context, (rt_ubase_t)&current_thread->sp,
+                        (rt_ubase_t)&to_thread->sp, to_thread);
             }
         }
     }

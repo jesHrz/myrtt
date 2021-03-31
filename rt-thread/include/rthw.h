@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -110,14 +110,18 @@ void rt_hw_interrupt_enable(rt_base_t level);
  * Context interfaces
  */
 #ifdef RT_USING_SMP
-void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to);
-void rt_hw_context_switch_to(rt_ubase_t to);
-void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from, rt_ubase_t to);
+void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to, struct rt_thread *to_thread);
+void rt_hw_context_switch_to(rt_ubase_t to, struct rt_thread *to_thread);
+void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from, rt_ubase_t to, struct rt_thread *to_thread);
 #else
 void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to);
 void rt_hw_context_switch_to(rt_ubase_t to);
 void rt_hw_context_switch_interrupt(rt_ubase_t from, rt_ubase_t to);
 #endif /*RT_USING_SMP*/
+
+#ifdef RT_USING_SYSCALLS
+rt_ubase_t rt_hw_syscall_dispatch(void *context);
+#endif
 
 void rt_hw_console_output(const char *str);
 
@@ -181,7 +185,7 @@ void rt_hw_secondary_cpu_up(void);
 void rt_hw_secondary_cpu_idle_exec(void);
 #else
 
-#define RT_DEFINE_SPINLOCK(x)  
+#define RT_DEFINE_SPINLOCK(x)
 #define RT_DECLARE_SPINLOCK(x)    rt_ubase_t x
 
 #define rt_hw_spin_lock(lock)     *(lock) = rt_hw_interrupt_disable()

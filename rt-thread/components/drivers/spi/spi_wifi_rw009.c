@@ -1,6 +1,6 @@
 /*
- * COPYRIGHT (C) 2018, Real-Thread Information Technology Ltd
- * 
+ * COPYRIGHT (C) 2011-2021, Real-Thread Information Technology Ltd
+ *
  * SPDX-License-Identifier: Apache-2.0
  *
  * Change Logs:
@@ -707,7 +707,7 @@ rt_err_t rt_hw_wifi_init(const char *spi_device_name, wifi_mode_t mode)
         tid = rt_thread_create("wifi",
                                spi_wifi_data_thread_entry,
                                RT_NULL,
-                               0, 2048,
+                               2048,
                                RT_THREAD_PRIORITY_MAX - 2,
                                20);
 

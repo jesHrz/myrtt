@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -619,7 +619,6 @@ static int rt_hw_stm32_eth_init(void)
     tid = rt_thread_create("phy",
                            phy_monitor_thread_entry,
                            RT_NULL,
-                           0,
                            1024,
                            RT_THREAD_PRIORITY_MAX - 2,
                            2);

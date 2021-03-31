@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -753,10 +753,6 @@ void rt_system_timer_thread_init(void)
                    "timer",
                    rt_thread_timer_entry,
                    RT_NULL,
-                   /* user stack */
-                   RT_NULL,
-                   0,
-                   /* kernel stack */
                    &timer_thread_stack[0],
                    sizeof(timer_thread_stack),
                    RT_TIMER_THREAD_PRIO,
